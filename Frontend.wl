@@ -51,5 +51,22 @@ processRequest[controls_, modals_, messager_, client_] := With[{
 buttonTemplate := ImportComponent[FileNameJoin[{rootFolder, "Templates", "Button.wlx"}] ];
 AppExtensions`TemplateInjection["AppNotebookTopBar"] = buttonTemplate["HandlerFunction" -> processRequest];
 
+AppExtensions`SidebarIcons = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Icons.wlx"}] ];
+
+
+
+(* reader of HTML files *)
+{checkEncoding, decode} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
+
+LoaderComponent = ImportComponent[ FileNameJoin[{rootFolder, "Templates", "Loader.wlx"}] ];
+
+Echo["DecoderLoaded!"];
+Echo[checkEncoding];
+
+HTMLFileQ[path_] := If[FileExtension[path] === "html", checkEncoding[path], False ];
+JerryI`Notebook`Views`Router[any_?HTMLFileQ, appevents_String] := With[{},
+    {LoaderComponent[##, "Path"->any, "Decoder"->decode], ""}&
+]
+
 End[]
 EndPackage[]

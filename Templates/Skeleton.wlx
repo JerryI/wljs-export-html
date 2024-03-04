@@ -29,12 +29,10 @@ ProduceStyles[path_] := With[{},
 
 
 ExportObjects[Rule["Notebook", notebook_]] := With[{
-  JSONObjects = StringRiffle[Table[With[{Data = ExportString[notebook["Objects", Item], "ExpressionJSON", "Compact"->1]},
-    StringJoin[ToString[Item, InputForm], ":", Data]
-  ], {Item, Keys[notebook["Objects"]]}], ","]
+  JSONAssoc = ExportString[#["Public"] &/@ notebook["Objects"], "ExpressionJSON", "Compact"->1]
 },
 
-  <script id="json-objects" type="application/json">{<JSONObjects/>}</script>
+  <script id="json-objects" type="application/json">{"storage":<JSONAssoc/>}</script>
 ]
 
 
@@ -43,20 +41,20 @@ ExportCells[Rule["Notebook", notebook_]] := Module[{},
   With[{cells = Map[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
-              {ExportString[CellObj`Serialize[cell](*`*), "ExpressionJSON"], ExportString[CellGenerator[cell, Null, <||>], "ExpressionJSON"]}
+              <|"Data"->CellObj`Serialize[cell](*`*), "Template"->CellGenerator[cell, Null, <||>]|>
           ]
       ]   
     ,    
         notebook["Cells"]
     ],
 
-    CellList = ExportString[#["Hash"] &/@ ( (notebook["Cells"][[1]] )["Notebook","Cells"]), "ExpressionJSON"]
+    CellList = #["Hash"] &/@ ( (notebook["Cells"][[1]] )["Notebook","Cells"])
   },
     With[{
-      Storage = StringRiffle[StringJoin["{\"data\":", #[[1]], ",",  "\"template\":", #[[2]], "}"] &/@ cells, ","]
+      Storage = ExportString[<|"Cells"->cells, "List"->CellList|>, "ExpressionJSON", "Compact"->1]
     },
   
-      <script id="cells-data" type="application/json">{"list": <CellList/>, "storage": [<Storage/>]}</script>
+      <script id="cells-data" type="application/json">{"storage": <Storage/>}</script>
     ]
   ]
 ];
@@ -72,7 +70,9 @@ Component[OptionsPattern[]] := With[{
             <meta charset="UTF-8"/>
             <meta serializer="hsfn-4"/>
             <ExportObjects Notebook={notebook}/>
+            <meta serializer="separator"/>
             <ExportCells Notebook={notebook}/>
+            <meta serializer="end"/>
             <RootStyles/>  
             <ExtensionsStyles/>
             <ExtensionsJS/> 
@@ -98,22 +98,32 @@ Component[OptionsPattern[]] := With[{
           </script> 
           <script type="module">
             const jsonstorage = document.getElementById('json-objects');
-            const store = JSON.parse(jsonstorage.innerText);
-            Object.keys(store).forEach(element => {
-              const o = new ObjectStorage(element);
-              o.cached = true;
-              o.cache = store[element];
-            });
+            const store = JSON.parse(jsonstorage.innerText)["storage"];
+
+            const a = async () => {
+              const assoc = await interpretate(store, {hold:true});
+
+              Object.keys(assoc).forEach(element => {
+                const o = new ObjectStorage(element);
+                o.cached = true;
+                o.cache = assoc[element];
+              });
+            }
+
+            a(store);
           </script>
           <script type="module">
             const jsonstorage = document.getElementById('cells-data');
-            const store = JSON.parse(jsonstorage.innerText);
+            const store = JSON.parse(jsonstorage.innerText)["storage"];
+          
 
             const process = async () => {
-              const list    = await interpretate(store["list"], {});
-              for (const item of store["storage"]) {
-                const template = await interpretate(item["template"], {});
-                const store    = await interpretate(item["data"], {});
+              const assoc = await interpretate(store, {});
+              const list    = assoc.List;
+
+              for (const item of Object.values(assoc.Cells)) {
+                const template = item.Template;
+                const store    = item.Data;
 
                 new CellWrapper(template, store, list, "", {IgnoreList:true});
               }
