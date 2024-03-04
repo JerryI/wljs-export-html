@@ -1,0 +1,55 @@
+BeginPackage["Notebook`Editor`ExportHTML`", {
+    "JerryI`Notebook`", 
+    "JerryI`Misc`Events`",
+    "JerryI`Misc`Events`Promise`",
+    "JerryI`WLX`",
+    "JerryI`WLX`Importer`",
+    "JerryI`WLX`WebUI`", 
+    "JerryI`Notebook`AppExtensions`",
+    "JerryI`Misc`WLJS`Transport`"
+}]
+
+Begin["`Internal`"]
+
+rootFolder = $InputFileName // DirectoryName;
+
+generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Skeleton.wlx"}] ];
+
+getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
+
+processRequest[controls_, modals_, messager_, client_] := With[{
+    notebookOnLine = getNotebook[controls]
+},
+    With[{
+        path = DirectoryName[ notebookOnLine["Path"] ],
+        name = FileBaseName[ notebookOnLine["Path"] ]
+    },
+        
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"Portable notebook",
+                "Ext"->"html",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".html"},
+                    If[filename === ".html", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                    Export[filename, generateNotebook["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]
+    ]
+]
+
+buttonTemplate := ImportComponent[FileNameJoin[{rootFolder, "Templates", "Button.wlx"}] ];
+AppExtensions`TemplateInjection["AppNotebookTopBar"] = buttonTemplate["HandlerFunction" -> processRequest];
+
+End[]
+EndPackage[]

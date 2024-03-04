@@ -1,0 +1,35 @@
+{
+    "name": "wljs-export-html",
+    "version": "0.0.1",
+    "scripts": {
+      "build-css": "npx tailwindcss build Styles/Tailwind.css -o Styles/Optimized.css"
+    },
+    "description": "A plugin for exporting notebooks to HTML",
+    "wljs-meta": {
+      "frontend": [
+        "Frontend.wl"        
+      ],
+      "priority": 5000,
+      "category": "Notebook Extensions",
+      "menu": [
+        {
+          "label": "Share as HTML",
+          "event": "export-html",
+          "spawnWindow": false,
+          "type": "button"
+        }
+      ]      
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/JerryI/wljs-export-html"
+    },
+    "dependencies": {
+      "@tailwindcss/aspect-ratio": "^0.4.2",
+      "@tailwindcss/container-queries": "^0.1.1",
+      "@tailwindcss/forms": "^0.5.7",
+      "@tailwindcss/typography": "^0.5.10",
+      "tailwindcss": "^3.4.1"
+    }
+  }
+  

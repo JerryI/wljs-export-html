@@ -1,0 +1,48 @@
+CellsGroup     := ImportComponent["Components/CellGroup.wlx"];
+CellFrame      := ImportComponent["Components/CellFrame.wlx"];
+Children       := ImportComponent["Components/Children.wlx"];
+CellsSubgroup  := ImportComponent["Components/CellSubgroup.wlx"];
+
+Border          = ImportComponent["Components/Border.wlx"];
+
+CellWrapper    := ImportComponent["Components/CellWrapper.wlx"];
+
+{ControlsLeft, ControlsRight, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
+
+Component[cell_CellObj, cli_, parameters_, OptionsPattern[]] := With[{
+    ExtensionTemplateInjection = OptionValue["ExtensionTemplateInjection"], 
+    ExtensionTemplateWrapper = OptionValue["ExtensionTemplateWrapper"],
+    Class = StringJoin["hover:b0g-", (If[StringQ[#], #, "teal"]&) @ (parameters["AccentColor"]), "-700/5"],
+    Style = If[TrueQ[cell["Invisible"]], "border-radius:2px hidden", "border-radius:2px"]
+},
+    If[InputCellQ @ cell,
+
+        <CellsGroup Cell={cell} Class={Class} Style={Style}>
+            <CellsSubgroup Cell={cell}>
+                <ControlsLeft Cell={cell}/>
+                <CellFrame Cell={cell}>
+                    <CellWrapper Parameters={parameters} Cell={cell}/>
+                    <Children Cell={cell}></Children>
+                </CellFrame>
+                <Border/>
+            </CellsSubgroup>
+        </CellsGroup>
+    ,
+        <CellsGroup Cell={cell}>
+            <CellFrame Cell={cell}>
+                <CellWrapper Cell={cell}/>
+            </CellFrame>   
+        </CellsGroup>  
+    ]
+]
+
+emptyStringFunction[x__] := ""
+sequenceIdentity[first__, rulels___Rule] := first 
+
+Options[Component] = {"ExtensionTemplateWrapper"-> sequenceIdentity, "ExtensionTemplateInjection" -> emptyStringFunction}
+
+Script = With[{},
+    ""
+]
+
+{Component, Script}

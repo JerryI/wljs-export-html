@@ -1,0 +1,130 @@
+CellsContainer := ImportComponent["Components/CellsContainer.wlx"];
+{CellGenerator, CellGeneratorScript}   = ImportComponent["CellGenerator.wlx"];
+
+{ControlsL, ControlsR, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
+
+Global`UINotebook (*`*);
+
+ExtensionsJS = With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
+    <script type="module">
+        <Data/>
+    </script>
+] &/@ WLJS`PM`Includes["minjs"] // ToStringRiffle;
+
+ExtensionsStyles = With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
+  <style>
+    <Data/>
+  </style> 
+] &/@ WLJS`PM`Includes["styles"] // ToStringRiffle;
+
+{NotebookComponent, NotebookScript} = ImportComponent["NotebookView.wlx"];
+
+ProduceStyles[path_] := With[{},
+  With[{Data = Import[#, "Text"]},
+    <style>
+      <Data/>
+    </style> 
+  ] &/@ {FileNameJoin[{path, "Styles", "Custom.css"}], FileNameJoin[{path, "Styles", "Optimized.css"}]}
+] // ToStringRiffle
+
+
+ExportObjects[Rule["Notebook", notebook_]] := With[{
+  JSONObjects = StringRiffle[Table[With[{Data = ExportString[notebook["Objects", Item], "ExpressionJSON", "Compact"->1]},
+    StringJoin[ToString[Item, InputForm], ":", Data]
+  ], {Item, Keys[notebook["Objects"]]}], ","]
+},
+
+  <script id="json-objects" type="application/json">{<JSONObjects/>}</script>
+]
+
+
+
+ExportCells[Rule["Notebook", notebook_]] := Module[{},
+  With[{cells = Map[
+      Function[cell,
+          With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
+              {ExportString[CellObj`Serialize[cell](*`*), "ExpressionJSON"], ExportString[CellGenerator[cell, Null, <||>], "ExpressionJSON"]}
+          ]
+      ]   
+    ,    
+        notebook["Cells"]
+    ],
+
+    CellList = ExportString[#["Hash"] &/@ ( (notebook["Cells"][[1]] )["Notebook","Cells"]), "ExpressionJSON"]
+  },
+    With[{
+      Storage = StringRiffle[StringJoin["{\"data\":", #[[1]], ",",  "\"template\":", #[[2]], "}"] &/@ cells, ","]
+    },
+  
+      <script id="cells-data" type="application/json">{"list": <CellList/>, "storage": [<Storage/>]}</script>
+    ]
+  ]
+];
+
+Component[OptionsPattern[]] := With[{
+  Title = OptionValue["Title"],
+  notebook = OptionValue["Notebook"],
+  RootStyles = ProduceStyles[OptionValue["Root"]],
+  nid = OptionValue["Notebook"]["Hash"]
+},
+    <html class="h-full" os="Browser"> 
+        <head>
+            <meta charset="UTF-8"/>
+            <meta serializer="hsfn-4"/>
+            <ExportObjects Notebook={notebook}/>
+            <ExportCells Notebook={notebook}/>
+            <RootStyles/>  
+            <ExtensionsStyles/>
+            <ExtensionsJS/> 
+            <WebUIInitializationScript/> 
+        </head>  
+        <body class="h-full dark:bg-gray-700 bg-white"> 
+          <div>
+            <div class="pl-2" id="frame">
+              <div class="h-full flex flex-col">
+                <main class="grow flex flex-col overflow-hidden dark:invert dark:contrast-75 dark:brightness-5 m-4 mt-2 rounded-lg bg-white shadow">
+                    <CellsContainer Notebook={notebook}></CellsContainer>
+                </main>
+              </div>
+            </div>
+          </div>   
+          <script type="module">
+            window.server = {
+              emitt: () => {}
+            }   
+          </script>   
+          <script type="module">
+            <ControlsScript/>   
+          </script> 
+          <script type="module">
+            const jsonstorage = document.getElementById('json-objects');
+            const store = JSON.parse(jsonstorage.innerText);
+            Object.keys(store).forEach(element => {
+              const o = new ObjectStorage(element);
+              o.cached = true;
+              o.cache = store[element];
+            });
+          </script>
+          <script type="module">
+            const jsonstorage = document.getElementById('cells-data');
+            const store = JSON.parse(jsonstorage.innerText);
+
+            const process = async () => {
+              const list    = await interpretate(store["list"], {});
+              for (const item of store["storage"]) {
+                const template = await interpretate(item["template"], {});
+                const store    = await interpretate(item["data"], {});
+
+                new CellWrapper(template, store, list, "", {IgnoreList:true});
+              }
+            }
+
+            process();
+          </script>
+        </body>
+    </html>
+]
+
+Options[Component] = {"Title" -> "Example", "Notebook"->""}
+
+Component
