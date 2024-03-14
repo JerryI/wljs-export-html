@@ -36,6 +36,14 @@ ExportObjects[Rule["Notebook", notebook_]] := With[{
 ]
 
 
+ExportStorage[Rule["Notebook", notebook_]] := With[{
+  Storage = ExportString[
+    If[!MemberQ[notebook["Properties"], "Storage"], <||>, notebook["Storage"]]
+  , "ExpressionJSON", "Compact"->1]
+},
+  <script id="json-storage" type="application/json">{"storage":<Storage/>}</script>
+]
+
 
 ExportCells[Rule["Notebook", notebook_]] := Module[{},
   With[{cells = Map[
@@ -72,6 +80,8 @@ Component[OptionsPattern[]] := With[{
             <ExportObjects Notebook={notebook}/>
             <meta serializer="separator"/>
             <ExportCells Notebook={notebook}/>
+            <meta serializer="separator"/>
+            <ExportStorage Notebook={notebook}/>
             <meta serializer="end"/>
             <RootStyles/>  
             <ExtensionsStyles/>

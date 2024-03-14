@@ -14,28 +14,32 @@ check[path_String] := Module[{str, result},
     result
 ]
 
-decode[path_String] := Module[{str, cells, objects, notebook},
+decode[path_String] := Module[{str, cells, objects, notebook, store},
 With[{
     dir = DirectoryName[path],
     name = FileBaseName[path],
-    term = "}</script><meta serializer=\"end\"/>",
-    mid = "}</script><meta serializer=\"separator\"/><script id=\"cells-data\" type=\"application/json\">{\"storage\":",
-    start = "<meta serializer=\"hsfn-4\"/><script id=\"json-objects\" type=\"application/json\">{\"storage\":"
+    start = "<meta serializer=\"hsfn-4\"/><script id=\"json-objects\" type=\"application/json\">{\"storage\":",
+    mid1 = "}</script><meta serializer=\"separator\"/><script id=\"cells-data\" type=\"application/json\">{\"storage\":",
+    mid2 = "}</script><meta serializer=\"separator\"/><script id=\"json-storage\" type=\"application/json\">{\"storage\":",
+    term = "}</script><meta serializer=\"end\"/>"
 }, 
     Echo["Notebook`Editor`ExportHTML`Decoder` >> checking encoding"];
     str = OpenRead[path];
     ReadString[str, start];
     ReadList[str, Character, StringLength[start] ];
-    objects = ImportString[ReadString[str, mid], "ExpressionJSON"];
-    ReadList[str, Character, StringLength[mid] ];
-    cells = ImportString[ReadString[str, term], "ExpressionJSON"];
+    objects = ImportString[ReadString[str, mid1], "ExpressionJSON"];
+    ReadList[str, Character, StringLength[mid1] ];
+    cells = ImportString[ReadString[str, mid2], "ExpressionJSON"];
+    ReadList[str, Character, StringLength[mid2] ];
+    store = ImportString[ReadString[str, term], "ExpressionJSON"];
     Close[str];
 
 
     notebook = <|
         "Notebook" -> <|
             "Objects" -> (<|"Public"->#|>&/@ objects), 
-            "Path" -> FileNameJoin[{dir, name<>".wln"}]
+            "Path" -> FileNameJoin[{dir, name<>".wln"}],
+            "Storage" -> store
         |>, 
         "Cells" -> (#["Data"] &/@cells["Cells"]),
         "serializer" -> "jsfn4" 
