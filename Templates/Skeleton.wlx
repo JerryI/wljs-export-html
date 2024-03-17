@@ -44,12 +44,26 @@ ExportStorage[Rule["Notebook", notebook_]] := With[{
   <script id="json-storage" type="application/json">{"storage":<Storage/>}</script>
 ]
 
+imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
+  img = Import[FileNameJoin[{DirectoryName @ notebook["Path"], Drop[path,-1], URLDecode[path // Last]} // Flatten]];
+  StringJoin["data:image/jpeg;base64,", ExportString[img, {"Base64", "JPEG"}, CompressionLevel->0]]
+]
+
+cellProcess[any_, _, _, _] := any
+cellProcess[data_, "Output", "markdown", notebook_] := Join[data, <|"Data" -> 
+  StringReplace[data["Data"], RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
+      StringJoin["![](", StringReplace[i, "\n"->""], ")"]
+    ]
+  ]
+|>]
 
 ExportCells[Rule["Notebook", notebook_]] := Module[{},
   With[{cells = Map[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
-              <|"Data"->CellObj`Serialize[cell](*`*), "Template"->CellGenerator[cell, Null, <||>]|>
+              With[{serialized = CellObj`Serialize[cell](*`*)},
+                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook], "Template"->CellGenerator[cell, Null, <||>]|>
+              ]
           ]
       ]   
     ,    
