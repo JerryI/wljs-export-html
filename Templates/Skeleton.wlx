@@ -107,7 +107,7 @@ Component[OptionsPattern[]] := With[{
           <div>
             <div class="pl-2" id="frame">
               <div class="h-full flex flex-col">
-                <main class="grow flex flex-col overflow-hidden dark:invert dark:contrast-75 dark:brightness-5 m-4 mt-2 rounded-lg bg-white shadow">
+                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 m-4 mt-2 rounded-lg bg-white shadow">
                     <CellsContainer Notebook={notebook}></CellsContainer>
                 </main>
               </div>
