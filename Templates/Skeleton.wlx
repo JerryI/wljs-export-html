@@ -29,7 +29,7 @@ ProduceStyles[path_] := With[{},
 
 
 ExportObjects[Rule["Notebook", notebook_]] := With[{
-  JSONAssoc = ExportString[#["Public"] &/@ notebook["Objects"], "ExpressionJSON", "Compact"->1]
+  JSONAssoc = ExportByteArray[#["Public"] &/@ notebook["Objects"], "ExpressionJSON", "Compact"->1] // ByteArrayToString
 },
 
   <script id="json-objects" type="application/json">{"storage":<JSONAssoc/>}</script>
@@ -37,9 +37,9 @@ ExportObjects[Rule["Notebook", notebook_]] := With[{
 
 
 ExportStorage[Rule["Notebook", notebook_]] := With[{
-  Storage = ExportString[
+  Storage = ExportByteArray[
     If[!MemberQ[notebook["Properties"], "Storage"], <||>, notebook["Storage"]]
-  , "ExpressionJSON", "Compact"->1]
+  , "ExpressionJSON", "Compact"->1] // ByteArrayToString
 },
   <script id="json-storage" type="application/json">{"storage":<Storage/>}</script>
 ]
@@ -73,7 +73,7 @@ ExportCells[Rule["Notebook", notebook_]] := Module[{},
     CellList = #["Hash"] &/@ ( (notebook["Cells"][[1]] )["Notebook","Cells"])
   },
     With[{
-      Storage = ExportString[<|"Cells"->cells, "List"->CellList|>, "ExpressionJSON", "Compact"->1]
+      Storage = ExportByteArray[<|"Cells"->cells, "List"->CellList|>, "ExpressionJSON", "Compact"->1] // ByteArrayToString
     },
   
       <script id="cells-data" type="application/json">{"storage": <Storage/>}</script>
