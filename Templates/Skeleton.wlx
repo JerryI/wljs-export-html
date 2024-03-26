@@ -50,10 +50,31 @@ imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
 ]
 
 cellProcess[any_, _, _, _] := any
+
 cellProcess[data_, "Output", "markdown", notebook_] := Join[data, <|"Data" -> 
-  StringReplace[data["Data"], RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
-      StringJoin["![](", StringReplace[i, "\n"->""], ")"]
-    ]
+  StringReplace[data["Data"], {
+      RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
+        StringJoin["![](", StringReplace[i, "\n"->""], ")"]
+      ],
+
+      RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
+      ]      
+    }
+  ]
+|>]
+
+
+cellProcess[data_, "Output", "slide", notebook_] := Join[data, <|"Data" -> 
+  StringReplace[data["Data"], {
+      RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
+        StringJoin["![](", StringReplace[i, "\n"->""], ")"]
+      ],
+
+      RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
+      ]      
+    }
   ]
 |>]
 
