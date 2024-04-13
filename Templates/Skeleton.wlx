@@ -17,7 +17,6 @@ ExtensionsStyles = With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text
   </style> 
 ] &/@ WLJS`PM`Includes["styles"] // ToStringRiffle;
 
-{NotebookComponent, NotebookScript} = ImportComponent["NotebookView.wlx"];
 
 ProduceStyles[path_] := With[{},
   With[{Data = Import[#, "Text"]},
