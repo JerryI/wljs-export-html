@@ -1,6 +1,6 @@
 {
     "name": "wljs-export-html",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "scripts": {
       "build-css": "npx tailwindcss build Styles/Tailwind.css -o Styles/Optimized.css"
     },

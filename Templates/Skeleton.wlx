@@ -3,19 +3,33 @@ CellsContainer := ImportComponent["Components/CellsContainer.wlx"];
 
 {ControlsL, ControlsR, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
 
+{loadSettings, storeSettings}        = ImportComponent["Frontend/Settings.wl"];
+
+settings = <||>;
+
 Global`UINotebook (*`*);
 
-ExtensionsJS = With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
+
+pmIncludes[param_, blacklist_List] := 
+Table[ 
+    Table[ 
+      FileNameJoin[{WLJS`PM`Packages[i, "name"], StringSplit[j, "/"]} // Flatten]
+    , {j, {WLJS`PM`Packages[i, "wljs-meta", param]} // Flatten} ]
+, {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[blacklist, #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], param])&]}] // Flatten;
+
+existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
+
+ExtensionsJS[Rule["Settings", settings_]] := With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
     <script type="module">
         <Data/>
     </script>
-] &/@ WLJS`PM`Includes["minjs"] // ToStringRiffle;
+] &/@ pmIncludes["minjs", existsOrEmpty[settings, "ExportHTMLExclude"]] // ToStringRiffle;
 
-ExtensionsStyles = With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
+ExtensionsStyles[Rule["Settings", settings_]] := With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
   <style>
     <Data/>
   </style> 
-] &/@ WLJS`PM`Includes["styles"] // ToStringRiffle;
+] &/@ pmIncludes["styles", existsOrEmpty[settings, "ExportHTMLExclude"]] // ToStringRiffle;
 
 
 ProduceStyles[path_] := With[{},
@@ -35,9 +49,9 @@ ExportObjects[Rule["Notebook", notebook_]] := With[{
 ]
 
 
-ExportStorage[Rule["Notebook", notebook_]] := With[{
+ExportStorage[Rule["Notebook", notebook_], Rule["Settings", settings_]] := With[{
   Storage = ExportByteArray[
-    If[!MemberQ[notebook["Properties"], "Storage"], <||>, notebook["Storage"]]
+    If[!MemberQ[notebook["Properties"], "Storage"] || (settings["ExportHTMLNotebookStore"] === False), <||>, notebook["Storage"]]
   , "ExpressionJSON", "Compact"->1] // ByteArrayToString
 },
   <script id="json-storage" type="application/json">{"storage":<Storage/>}</script>
@@ -48,41 +62,49 @@ imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
   StringJoin["data:image/jpeg;base64,", ExportString[img, {"Base64", "JPEG"}, CompressionLevel->0]]
 ]
 
-cellProcess[any_, _, _, _] := any
+cellProcess[any_, _, _, _, _] := any
 
-cellProcess[data_, "Output", "markdown", notebook_] := Join[data, <|"Data" -> 
-  StringReplace[data["Data"], {
-      RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
-        StringJoin["![](", StringReplace[i, "\n"->""], ")"]
-      ],
-
-      RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
-        StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
-      ]      
-    }
+cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"Data" -> 
+  If[settings["ExportHTMLImages"] === False,
+    data["Data"]
+  ,
+    StringReplace[data["Data"], {
+        RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
+          StringJoin["![](", StringReplace[i, "\n"->""], ")"]
+        ],
+      
+        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+          StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
+        ]      
+      }
+    ]
   ]
 |>]
 
 
-cellProcess[data_, "Output", "slide", notebook_] := Join[data, <|"Data" -> 
-  StringReplace[data["Data"], {
-      RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
-        StringJoin["![](", StringReplace[i, "\n"->""], ")"]
-      ],
+cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Data" -> 
+  If[settings["ExportHTMLImages"] === False,
+    data["Data"]
+  ,
+    StringReplace[data["Data"], {
+        RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
+          StringJoin["![](", StringReplace[i, "\n"->""], ")"]
+        ],
 
-      RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
-        StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
-      ]      
-    }
+        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+          StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
+        ]      
+      }
+    ]
   ]
 |>]
 
-ExportCells[Rule["Notebook", notebook_]] := Module[{},
+ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[{},
   With[{cells = Map[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
               With[{serialized = CellObj`Serialize[cell](*`*)},
-                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook], "Template"->CellGenerator[cell, Null, <||>]|>
+                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cell, Null, <||>]|>
               ]
           ]
       ]   
@@ -101,25 +123,28 @@ ExportCells[Rule["Notebook", notebook_]] := Module[{},
   ]
 ];
 
-Component[OptionsPattern[]] := With[{
+Component[OptionsPattern[]] := Module[{settings}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
   RootStyles = ProduceStyles[OptionValue["Root"]],
   nid = OptionValue["Notebook"]["Hash"]
 },
+
+    loadSettings[settings];
+
     <html class="h-full" os="Browser"> 
         <head>
             <meta charset="UTF-8"/>
             <meta serializer="hsfn-4"/>
             <ExportObjects Notebook={notebook}/>
             <meta serializer="separator"/>
-            <ExportCells Notebook={notebook}/>
+            <ExportCells Notebook={notebook} Settings={settings}/>
             <meta serializer="separator"/>
-            <ExportStorage Notebook={notebook}/>
+            <ExportStorage Notebook={notebook} Settings={settings}/>
             <meta serializer="end"/>
             <RootStyles/>  
-            <ExtensionsStyles/>
-            <ExtensionsJS/> 
+            <ExtensionsStyles Settings={settings}/>
+            <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
         </head>  
@@ -178,7 +203,7 @@ Component[OptionsPattern[]] := With[{
           </script>
         </body>
     </html>
-]
+]]
 
 Options[Component] = {"Title" -> "Example", "Notebook"->""}
 

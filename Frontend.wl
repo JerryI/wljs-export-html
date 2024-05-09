@@ -6,12 +6,15 @@ BeginPackage["Notebook`Editor`ExportHTML`", {
     "JerryI`WLX`Importer`",
     "JerryI`WLX`WebUI`", 
     "JerryI`Notebook`AppExtensions`",
-    "JerryI`Misc`WLJS`Transport`"
+    "JerryI`Misc`WLJS`Transport`",
+    "JerryI`WLJSPM`"
 }]
 
 Begin["`Internal`"]
 
 rootFolder = $InputFileName // DirectoryName;
+AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Settings.wlx"}] ];
+
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Skeleton.wlx"}] ];
 

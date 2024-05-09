@@ -1,0 +1,88 @@
+Checkbox = ImportComponent["UI/Checkbox.wlx"];
+Knob     = ImportComponent["UI/Button.wlx"];
+
+IfKeyExists[assoc_Association, list_Association] := With[{},
+    If[KeyExistsQ[assoc, #[[1]]], assoc[#[[1]]], #[[2]]] &/@ Keys[list]
+];
+
+bundlable = Select[Keys[WLJS`PM`Packages], !MissingQ[WLJS`PM`Packages[#, "wljs-meta", "minjs"]]&];
+
+getDesc[tag_] := WLJS`PM`Packages[tag, "description"]
+
+parseInt[any_String] := ToExpression[any]
+parseInt[any_] := any 
+
+
+
+Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
+    update = CreateUUID[],
+    settings = OptionValue["Settings"],
+    log = OptionValue["Messager"],
+    onsave = OptionValue["OnSave"],
+    toggleSwitch = CreateUUID[],
+
+    initialValues = Join[<|
+        "ExportHTMLNotebookStore" -> True,
+        "ExportHTMLImages" -> True,
+        "ExportHTMLExclude" -> {"wljs-plotly"}
+    |>, OptionValue["Settings"]]
+},
+    EventHandler[update, {
+        "ExportHTMLNotebookStore" -> Function[state,
+            onsave[<|"ExportHTMLNotebookStore" -> state|>];
+        ],
+        
+        "ExportHTMLImages" -> Function[state,
+            onsave[<|"ExportHTMLImages" -> state|>];
+        ]
+    }];
+
+    tempBuffer = initialValues["ExportHTMLExclude"];
+    EventHandler[toggleSwitch, {
+        name_String :> Function[state,
+            If[state,
+                tempBuffer = Append[tempBuffer, name];
+            ,
+                tempBuffer = tempBuffer /. {name -> Nothing};
+            ];
+            onsave[<|"ExportHTMLExclude" -> tempBuffer|>];
+        ]
+    }];
+
+    With[{ExtensionsList = 
+        Table[
+            <StringRiffle>
+                <Checkbox Label={name} Event={toggleSwitch} Topic={name} Description={getDesc[name]} Checked={MemberQ[initialValues["ExportHTMLExclude"], name]}/>
+            </StringRiffle>   
+        , {name, bundlable}]
+    },
+
+        <li class="px-0 py-4 sm:px-0">
+            <div class="px-4 sm:px-0 pb-3 border-b border-gray-100">
+                <h3 class="text-base font-semibold leading-7 text-gray-900 dark:text-gray-300">Export settings</h3>
+                <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-500"></p>
+            </div>
+            <div class="mt-4">   
+                <span class="dark:text-gray-400">Include</span>
+                <div class="block my-2 py-2">
+                    <StringRiffle>
+                        <Checkbox Label={"NotebookStore"} Event={images} Topic={"ExportHTMLNotebookStore"} Description={"Include intenal notebook storage data"} Checked={initialValues["ExportHTMLNotebookStore"]}/>
+                    </StringRiffle>            
+                    <StringRiffle>
+                        <Checkbox Label={"External images"} Event={images} Topic={"ExportHTMLImages"} Description={"Compress external images used on slides and WLX, HTML and Markdown cells"} Checked={initialValues["ExportHTMLImages"]}/>
+                    </StringRiffle>
+                </div>     
+            </div>
+            <div class="mt-4">   
+                <span class="dark:text-gray-400">Exclude from bundle</span>
+                <div class="block my-2 py-2">
+                    <StringRiffle>
+                        <ExtensionsList/>
+                    </StringRiffle>            
+                </div>     
+            </div>         
+        </li>
+    ]
+]]
+
+Component
