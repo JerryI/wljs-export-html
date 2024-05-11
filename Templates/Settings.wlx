@@ -24,12 +24,17 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
     initialValues = Join[<|
         "ExportHTMLNotebookStore" -> True,
         "ExportHTMLImages" -> True,
+        "ExportHTMLUseCDN" -> False,
         "ExportHTMLExclude" -> {"wljs-plotly"}
     |>, OptionValue["Settings"]]
 },
     EventHandler[update, {
         "ExportHTMLNotebookStore" -> Function[state,
             onsave[<|"ExportHTMLNotebookStore" -> state|>];
+        ],
+
+        "ExportHTMLUseCDN" -> Function[state,
+            onsave[<|"ExportHTMLUseCDN" -> state|>];
         ],
         
         "ExportHTMLImages" -> Function[state,
@@ -63,13 +68,19 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
                 <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-500"></p>
             </div>
             <div class="mt-4">   
+                <span class="dark:text-gray-400">General</span>
+                <div class="block my-2 py-2">
+                    <StringRiffle>
+                        <Checkbox Label={"Use CDN"} Event={update} Topic={"ExportHTMLUseCDN"} Description={"Do not include all packages to an exported file, but use CDN service. It reduces the file size, but makes it internet dependent."} Checked={initialValues["ExportHTMLUseCDN"]}/>
+                    </StringRiffle>            
+                </div>
                 <span class="dark:text-gray-400">Include</span>
                 <div class="block my-2 py-2">
                     <StringRiffle>
-                        <Checkbox Label={"NotebookStore"} Event={images} Topic={"ExportHTMLNotebookStore"} Description={"Include intenal notebook storage data"} Checked={initialValues["ExportHTMLNotebookStore"]}/>
+                        <Checkbox Label={"NotebookStore"} Event={update} Topic={"ExportHTMLNotebookStore"} Description={"Include intenal notebook storage data"} Checked={initialValues["ExportHTMLNotebookStore"]}/>
                     </StringRiffle>            
                     <StringRiffle>
-                        <Checkbox Label={"External images"} Event={images} Topic={"ExportHTMLImages"} Description={"Compress external images used on slides and WLX, HTML and Markdown cells"} Checked={initialValues["ExportHTMLImages"]}/>
+                        <Checkbox Label={"External images"} Event={update} Topic={"ExportHTMLImages"} Description={"Compress external images used on slides and WLX, HTML and Markdown cells"} Checked={initialValues["ExportHTMLImages"]}/>
                     </StringRiffle>
                 </div>     
             </div>
