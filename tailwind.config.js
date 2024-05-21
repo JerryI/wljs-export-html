@@ -4,7 +4,8 @@ const platforms = [['Browser', 'bro']]
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './../../**/*.wlx'
+    './../../**/*.wlx',
+    './../wljs-inputs/src/kernel.js'
   ],
   theme: {
     extend: {
