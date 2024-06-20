@@ -2,15 +2,16 @@
 
 Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = OptionValue["Decoder"], Color = If[StringQ[#], #, "{Color}"]& @ (OptionValue["Parameters"]["AccentColor"]), Path = OptionValue["Path"], Messager = OptionValue["Messanger"], Controls = OptionValue["Controls"]},  
   EventHandler[EventChannel, Function[Null,
-    With[{client = Global`$Client(*`*), spinner = Global`NotificationSpinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*)},
+    With[{client = Global`$Client(*`*)},
     Echo[client];
    
     EventFire[Messager, spinner, Null];
-        With[{p = decode[Path]},
+    With[{p = decode[Path, "Messager"->Messager, "Client"->client]},
+            Echo[p];
             Then[p, Function[result,
               Pause[1];
               Echo[result];
-              EventFire[spinner["Promise"], Resolve, True];
+              (*/*EventFire[spinner["Promise"], Resolve, True];*/*)
               WebUILocation[ URLEncode[ result ], client ] // Echo;
 
             ]];
@@ -27,6 +28,6 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
   ]
 ]
 
-Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "Controls" -> ""};
+Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "Controls" -> "", "Client"->Null};
 
 Component

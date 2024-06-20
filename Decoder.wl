@@ -2,10 +2,15 @@ BeginPackage["Notebook`Editor`ExportDecoder`", {
     "JerryI`Notebook`", 
     "JerryI`Misc`Events`",
     "JerryI`WLX`Importer`",
-    "JerryI`Misc`Events`Promise`"
+    "JerryI`Misc`Events`Promise`",
+    "JerryI`Notebook`Transactions`", 
+    "JerryI`Notebook`Kernel`",
+    "JerryI`Notebook`LocalKernel`"
 }];
 
 Begin["`Internal`"];
+
+System`RowBoxFlatten;
 
 {saveNotebook, loadNotebook, renameNotebook, cloneNotebook}         = ImportComponent["Frontend/Loader.wl"];
 
@@ -17,7 +22,7 @@ check[path_String] := Module[{str, result},
     result
 ]
 
-decodeHTML[path_String] := Module[{str, cells, objects, notebook, store},
+decodeHTML[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
 With[{
     dir = DirectoryName[path],
     name = FileBaseName[path],
@@ -25,8 +30,12 @@ With[{
     start = "<meta serializer=\"hsfn-4\"/><script id=\"json-objects\" type=\"application/json\">{\"storage\":",
     mid1 = "}</script><meta serializer=\"separator\"/><script id=\"cells-data\" type=\"application/json\">{\"storage\":",
     mid2 = "}</script><meta serializer=\"separator\"/><script id=\"json-storage\" type=\"application/json\">{\"storage\":",
-    term = "}</script><meta serializer=\"end\"/>"
+    term = "}</script><meta serializer=\"end\"/>",
+    spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*),
+    msg = OptionValue["Messager"]
 }, 
+    EventFire[msg, spinner, True];
+
     Echo["Notebook`Editor`ExportHTML`Decoder` >> checking encoding"];
     str = OpenRead[path];
     ReadString[str, start];
@@ -50,9 +59,12 @@ With[{
     |>;
 
     Put[notebook, FileNameJoin[{dir, name<>".wln"}] ];
+    EventFire[spinner["Promise"], Resolve, True];
     EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
     promise
 ] ]
+
+Options[decodeHTML] = {"Messager"->"", "Client"->Null}
 
 lang["mathematica"] := ""
 lang["wolfram"] := ""
@@ -62,13 +74,17 @@ lang["jsx"] := ".wlx\n"
 lang["markdown"] := ".md\n"
 lang[any_String] := StringJoin[".", any, "\n"]
 
-decodeMD[path_String] := Module[{str, cells, objects, notebook, store},
+decodeMD[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
 With[{
     dir = DirectoryName[path],
     name = FileBaseName[path],
-    promise = Promise[]
+    promise = Promise[],
+    msg = OptionValue["Messager"],
+    client = OptionValue["Client"],
+    spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*)
 }, 
-   
+    EventFire[msg, spinner, True];
+
     str = Import[path, "Text"];
 
 
@@ -127,8 +143,182 @@ With[{
 
     Echo["SAVING////////"];
     Then[saveNotebook[notebook], Function[Null,
+      EventFire[spinner["Promise"], Resolve, True];
       EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
     ] ];
+
+   promise 
+] ]
+
+Options[decodeMD] = {"Messager"->"", "Client"->Null}
+
+processString[str_String] := StringReplace[ExportString[str, "String"], "\[NoBreak]"->""]
+
+convert[Cell[BoxData[boxes_List], "Input", ___], notebook_, kernel_] := With[{p = Promise[]},
+  Then[evaluateInPlace[StringRiffle[ToString[# /. {RowBox->RowBoxFlatten}] &/@ boxes, ""], kernel], Function[reply,
+    CellObj["Data"->processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    EventFire[p, Resolve, True];
+  ] ];
+  p
+]
+
+convert[Cell[BoxData[boxes_], "Input", ___], notebook_, kernel_] := With[{p = Promise[]},
+  Then[evaluateInPlace[StringRiffle[ToString[# /. {RowBox->RowBoxFlatten}] &/@ {boxes}, ""], kernel], Function[reply,
+    CellObj["Data"->processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    EventFire[p, Resolve, True];
+  ] ];
+  p
+]
+
+
+takeFirst[expr_, ___] := expr
+
+toStringFormExperimental[boxes_] := (
+  Echo[ToString[boxes, InputForm] ];
+  boxes /. {StyleBox -> takeFirst}
+)
+
+convert[Cell[data_, "Text", ___], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n", ToString[data /. {StyleBox[data_, ___] :> data}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->ToString[data /. {StyleBox[data_, ___] :> data}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+  
+)
+
+convert[Cell[t: TextData[data_], "Text", ___], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n", toStringFormExperimental[data] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->toStringFormExperimental[data], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+
+)
+
+convert[Cell[TextData[data_RowBox], "Text", ___], notebook_, kernel_] := With[{},
+  CellObj["Data"->StringJoin[".md\n", ToString[data /. {RowBox -> StringJoin} /. {StyleBox[data_, ___] :> data}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->ToString[data /. {RowBox -> StringJoin} /. {StyleBox[data_, ___] :> data}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+
+]
+
+convert[Cell[BoxData[boxes_List], "Output", ___], notebook_, kernel_] := With[{p = Promise[]},
+
+  Then[evaluateInPlace[StringRiffle[ToString[ToExpression[#, StandardForm], StandardForm]& /@ boxes, ""] , kernel], Function[reply,
+    CellObj["Data"->processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    EventFire[p, Resolve, True];
+  ] ];
+  p
+]
+
+
+
+convert[Cell[BoxData[boxes_], "Output", ___], notebook_, kernel_] := With[{p = Promise[]},
+
+  Then[evaluateInPlace[StringRiffle[ToString[ToExpression[#, StandardForm], StandardForm]& /@ {boxes}, ""] , kernel], Function[reply,
+    CellObj["Data"-> processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    EventFire[p, Resolve, True];
+  ] ];
+  p
+]
+
+ApplySync[f_, w_, {first_, rest___}, final_] := f[w@@first, Function[Null, Echo["Async >> Next"]; ApplySync[f,w, {rest}, final]]]
+ApplySync[f_, w_, {}, final_] := final[];
+
+convert[Cell[CellGroupData[list_List, ___], ___], notebook_, kernel_] := With[{p = Promise[]},
+  ApplySync[Then, convert, {
+          #, notebook, kernel
+      } &/@ list, Function[Null,
+      
+      EventFire[p, Resolve, True];
+  ] ];  
+  p
+]
+
+evaluateInPlace[expr_, k_] := With[{t = Transaction[], p = Promise[]},
+    t["Evaluator"] = Internal`Kernel`Evaluator`Held ;
+    t["Data"] = Hold[expr];
+
+    EventHandler[t, {
+        (* capture successfull event of the last transaction to end the process *)  
+        "Result" -> Function[data, 
+            EventFire[p, Resolve, data];
+        ]
+    }];      
+
+    Kernel`Submit[k, t];
+    p
+]
+
+SetAttributes[evaluateInPlace, HoldFirst]
+
+
+decodeMathematica[opts__][path_String, secondaryOpts___] := Module[{
+  str, cells, objects, notebook, nb, store, options
+},
+With[{
+    dir = DirectoryName[path],
+    name = FileBaseName[path],
+    promise = Promise[],
+    spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*)
+}, 
+    Echo["Convering Mathematica Notebook..."];
+    nb = Import[path];
+
+
+    notebook = Notebook[];
+    With[{n = notebook},
+        n["Path"] = FileNameJoin[{dir, name<>".wln"}];
+    ];
+
+    
+    options = Join[Association[List[opts] ], Association[ List[secondaryOpts] ] ]; 
+
+    If[Length[options["Kernels"] //ReleaseHold ] === 0,
+      EventFire[options["Messager"], "Error", "The converting process is not possible without working Kernels"];
+      Return[promise];
+    ];
+
+    Print["requesting modal...."];
+      With[{request = CreateUUID[]},
+        EventHandler[request, {
+            "Success" -> Function[data,
+                
+                If[TrueQ[data["ContainerReadyQ"] ],
+                    Echo[data];
+
+                    notebook["Evaluator"] = data["Container"];
+                    EventFire[notebook, "AquairedKernel", True];
+
+                    EventFire[options["Messager"], spinner, True];
+
+                    ApplySync[Then, convert, {
+                      #, notebook, data
+                    } &/@ nb[[1]], Function[Null,
+      
+                      Echo["SAVING////////"];
+                      Then[saveNotebook[notebook], Function[Null,
+                        EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
+                      ] ];
+                    ] ]; 
+
+                ,
+                    EventFire[options["Messager"], "Error", "Container is not ready! Try again later"];
+                ];
+                
+                EventRemove[request];
+            ],
+            
+            "Error" -> Function[error,
+                        EventFire[options["Messager"], "Error", "Error while selecting"];
+                        EventRemove[request];
+            ],
+            
+            _ -> Function[Null,
+                        EventFire[options["Messager"], "Error", "The converting is not possible without a working Kernel"];
+                        EventRemove[request];
+            ]
+        }];
+        
+        Print["fire!"];
+        EventFire[options["Modals"], "SuggestKernel", <|"Client"->options["Client"], "Callback"->request, "Kernels"->(options["Kernels"] //ReleaseHold)|>];    
+    ];
+
+    (**)
 
    promise 
 ] ]
@@ -136,4 +326,4 @@ With[{
 End[];    
 EndPackage[];
 
-{Notebook`Editor`ExportDecoder`Internal`check, Notebook`Editor`ExportDecoder`Internal`decodeHTML, Notebook`Editor`ExportDecoder`Internal`decodeMD}
+{Notebook`Editor`ExportDecoder`Internal`check, Notebook`Editor`ExportDecoder`Internal`decodeHTML, Notebook`Editor`ExportDecoder`Internal`decodeMD, Notebook`Editor`ExportDecoder`Internal`decodeMathematica}

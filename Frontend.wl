@@ -107,7 +107,7 @@ AppExtensions`SidebarIcons = ImportComponent[FileNameJoin[{rootFolder, "Template
 
 
 (* reader of HTML and MD files *)
-{checkEncoding, decodeHTML, decodeMD} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
+{checkEncoding, decodeHTML, decodeMD, decodeMathematica} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
 
 LoaderComponent = ImportComponent[ FileNameJoin[{rootFolder, "Templates", "Loader.wlx"}] ];
 
@@ -124,6 +124,17 @@ MDFileQ[path_] := FileExtension[path] === "md"
 JerryI`Notebook`Views`Router[any_?MDFileQ, appevents_String] := With[{},
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeMD], ""}&
 ]
+
+NBFileQ[path_] := FileExtension[path] === "nb"
+
+JerryI`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
+    Echo["Mathematica Notebook!"];
+    Echo[decodeMathematica[##] ];
+
+    {LoaderComponent[##, "Path"->any, "Decoder"->decodeMathematica[##] ], ""}
+]&
+
+
 
 End[]
 EndPackage[]
