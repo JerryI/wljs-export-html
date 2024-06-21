@@ -152,7 +152,7 @@ With[{
 
 Options[decodeMD] = {"Messager"->"", "Client"->Null}
 
-processString[str_String] := StringReplace[ExportString[str, "String"], "\[NoBreak]"->""]
+processString[str_String] := StringReplace[ExportString[str, "String"], "\\[NoBreak]"->""]
 
 convert[Cell[BoxData[boxes_List], "Input", ___], notebook_, kernel_] := With[{p = Promise[]},
   Then[evaluateInPlace[StringRiffle[ToString[# /. {RowBox->RowBoxFlatten}] &/@ boxes, ""], kernel], Function[reply,
