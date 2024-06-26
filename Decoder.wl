@@ -179,8 +179,8 @@ toStringFormExperimental[boxes_] := (
 )
 
 convert[Cell[data_, "Text", ___], notebook_, kernel_] := (
-  CellObj["Data"->StringJoin[".md\n", ToString[data /. {StyleBox[data_, ___] :> data}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
-  CellObj["Data"->ToString[data /. {StyleBox[data_, ___] :> data}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+  CellObj["Data"->StringJoin[".md\n", ToString[data /. {StyleBox[dta_, ___] :> dta}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->ToString[data /. {StyleBox[dta_, ___] :> dta}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
   
 )
 
@@ -191,8 +191,8 @@ convert[Cell[t: TextData[data_], "Text", ___], notebook_, kernel_] := (
 )
 
 convert[Cell[TextData[data_RowBox], "Text", ___], notebook_, kernel_] := With[{},
-  CellObj["Data"->StringJoin[".md\n", ToString[data /. {RowBox -> StringJoin} /. {StyleBox[data_, ___] :> data}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
-  CellObj["Data"->ToString[data /. {RowBox -> StringJoin} /. {StyleBox[data_, ___] :> data}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+  CellObj["Data"->StringJoin[".md\n", ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 
 ]
 
