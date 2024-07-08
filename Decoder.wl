@@ -22,7 +22,7 @@ check[path_String] := Module[{str, result},
     result
 ]
 
-decodeHTML[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
+decodeHTML[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store, symbols},
 With[{
     dir = DirectoryName[path],
     name = FileBaseName[path],
@@ -31,6 +31,10 @@ With[{
     mid1 = "}</script><meta serializer=\"separator\"/><script id=\"cells-data\" type=\"application/json\">{\"storage\":",
     mid2 = "}</script><meta serializer=\"separator\"/><script id=\"json-storage\" type=\"application/json\">{\"storage\":",
     term = "}</script><meta serializer=\"end\"/>",
+
+    startExtra = "<meta serializer=\"hsfn-extras\"/><script id=\"json-symbols\" type=\"application/json\">{\"storage\":",
+    termExtra = "}</script><meta serializer=\"end-extras\"/>",
+
     spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*),
     msg = OptionValue["Messager"]
 }, 
@@ -45,6 +49,14 @@ With[{
     cells = ImportString[ReadString[str, mid2], "ExpressionJSON"];
     ReadList[str, Character, StringLength[mid2] ];
     store = ImportString[ReadString[str, term], "ExpressionJSON"];
+
+    ReadString[str, startExtra];
+    ReadList[str, Character, StringLength[startExtra] ];
+    symbols = ReadString[str, termExtra];
+    If[symbols === EndOfFile, symbols = <||>,
+      symbols = ImportString[symbols, "ExpressionJSON"];
+    ];
+    
     Close[str];
 
 
@@ -52,7 +64,8 @@ With[{
         "Notebook" -> <|
             "Objects" -> (<|"Public"->#|>&/@ objects), 
             "Path" -> FileNameJoin[{dir, name<>".wln"}],
-            "Storage" -> store
+            "Storage" -> store,
+            "Symbols" -> symbols
         |>, 
         "Cells" -> (#["Data"] &/@cells["Cells"]),
         "serializer" -> "jsfn4" 

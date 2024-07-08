@@ -81,6 +81,13 @@ ExportObjects[Rule["Notebook", notebook_]] := With[{
   <script id="json-objects" type="application/json">{"storage":<JSONAssoc/>}</script>
 ]
 
+ExportSymbols[Rule["Notebook", notebook_]] := With[{
+  JSONAssoc = ExportByteArray[If[MemberQ[notebook["Properties"], "Symbols"], notebook["Symbols"], <||>], "ExpressionJSON", "Compact"->1] // ByteArrayToString
+},
+
+  <script id="json-symbols" type="application/json">{"storage":<JSONAssoc/>}</script>
+]
+
 
 ExportStorage[Rule["Notebook", notebook_], Rule["Settings", settings_]] := With[{
   Storage = ExportByteArray[
@@ -175,6 +182,9 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <meta serializer="separator"/>
             <ExportStorage Notebook={notebook} Settings={settings}/>
             <meta serializer="end"/>
+            <meta serializer="hsfn-extras"/>
+            <ExportSymbols Notebook={notebook}/>
+            <meta serializer="end-extras"/>
             <RootStyles/>  
             <ExtensionsStyles Settings={settings}/>
             <ExtensionsJS Settings={settings}/> 
@@ -199,6 +209,24 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
           <script type="module">
             <ControlsScript/>   
           </script> 
+          <script type="module">
+            const jsonstorage = document.getElementById('json-symbols');
+            const store = JSON.parse(jsonstorage.innerText)["storage"];
+
+            const a = async () => {
+              const assoc = await interpretate(store, {hold:true});
+
+              Object.keys(assoc).forEach(element => {
+                core[element] = async (args, env) => {
+                  return await interpretate(core[element].data, env)
+                };
+
+                core[element].data = assoc[element];
+              });
+            }
+
+            a(store);
+          </script>          
           <script type="module">
             const jsonstorage = document.getElementById('json-objects');
             const store = JSON.parse(jsonstorage.innerText)["storage"];
