@@ -172,6 +172,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 
     loadSettings[settings];
 
+    { "<!DOCTYPE html>", 
     <html class="h-full" os="Browser"> 
         <head>
             <meta charset="UTF-8"/>
@@ -264,6 +265,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
           </script>
         </body>
     </html>
+  } // StringRiffle
 ]]
 
 Options[Component] = {"Title" -> "Example", "Notebook"->""}
