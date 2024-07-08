@@ -12,25 +12,23 @@ CellWrapper    := ImportComponent["Components/CellWrapper.wlx"];
 Component[cell_CellObj, cli_, parameters_, OptionsPattern[]] := With[{
     ExtensionTemplateInjection = OptionValue["ExtensionTemplateInjection"], 
     ExtensionTemplateWrapper = OptionValue["ExtensionTemplateWrapper"],
-    Class = StringJoin["hover:b0g-", (If[StringQ[#], #, "teal"]&) @ (parameters["AccentColor"]), "-700/5"],
-    Style = If[TrueQ[cell["Invisible"]], "hidden", "border-radius:2px"]
+    Class = If[(cell["Display"] === "slide" || cell["Display"] === "slides") || cell["Type"] === "Input", "", "hidden"],
+    Style = ""
 },
-   
+
 
     If[InputCellQ @ cell,
 
         <CellsGroup Cell={cell} Class={Class} Style={Style}>
             <CellsSubgroup Cell={cell}>
-                <ControlsLeft Cell={cell}/>
                 <CellFrame Cell={cell}>
                     <CellWrapper Parameters={parameters} Cell={cell}/>
                     <Children Cell={cell}></Children>
                 </CellFrame>
-                <Border/>
             </CellsSubgroup>
         </CellsGroup>
     ,
-        <CellsGroup Cell={cell}>
+        <CellsGroup Cell={cell} Class={Class} Style={Style}>
             <CellFrame Cell={cell}>
                 <CellWrapper Cell={cell}/>
             </CellFrame>   

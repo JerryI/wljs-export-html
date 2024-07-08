@@ -17,9 +17,49 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML.wlx"}] ];
+generateSlides = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides.wlx"}] ];
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown.wlx"}] ];
 
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
+
+exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+
+},
+    With[{
+
+    },
+        
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"Full page slides",
+                "Ext"->"html",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".html"},
+                    If[filename === ".html", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+
+    
+                    With[{slidesQ = Map[Function[cell, cell["Display"] == "slide" ], notebookOnLine["Cells"] ]},
+                        If[!(Or @@ slidesQ),
+                            EventFire[messager, "Warning", "Notebook does not contain any output slide cells"];
+                            Return[];                        
+                        ]
+                    ];
+
+                    Export[filename, generateSlides["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]
+    ]
+]
 
 exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
 
@@ -91,9 +131,9 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"HTML", "Markdown"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"HTML", "Markdown", "Slides only"}|>];
             Then[p, Function[choise,
-                {exportHTML, exportMarkdown}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                {exportHTML, exportMarkdown, exportSlides}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
             ] ];
         ]
     ]
