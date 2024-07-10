@@ -1,7 +1,7 @@
 id = $Options["Notebook"]["Hash"];
 Color = If[StringQ[#], #, "teal"]& @ ($Options["Parameters"]["AccentColor"]);
 
-<div id="container-{id}">
+<div class="ccontainer" id="container-{id}">
     <style>
         :root {
             --editor-selected-tint: #0088550d;
