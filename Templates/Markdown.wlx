@@ -8,7 +8,7 @@ settings = <||>;
 
 
 imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
-  img = Import[FileNameJoin[{DirectoryName @ notebook["Path"], Drop[path,-1], URLDecode[path // Last]} // Flatten]];
+  img = {Import[FileNameJoin[{DirectoryName @ notebook["Path"], Drop[path,-1], URLDecode[path // Last]} // Flatten]]} // Flatten // First;
   StringJoin["data:image/jpeg;base64,", ExportString[img, {"Base64", "JPEG"}, CompressionLevel->0]]
 ]
 
