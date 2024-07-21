@@ -22,6 +22,30 @@ FigureCode[OptionsPattern[]] := With[{
 
 Options[FigureCode] = {"Expression" -> {}}
 
+
+SymbolsCode[OptionsPattern[]] := With[{
+    JSON = compress[ExportString[OptionValue["Expression"], "ExpressionJSON", "Compact"->1] ],
+    UId  = CreateUUID[]
+},    
+    <div class="wljs-wrapper">
+        <div class="wljs-container" id="{UId}"></div>
+        <script type="module">
+            let payload = '<JSON/>';
+            payload = JSON.parse(interpretate.unzlib64String(payload));
+
+            //INDEV
+            core[element] = async (args, env) => {
+                return await interpretate(core[element].data, env)
+            };
+
+            core[element].data = assoc[element];
+        </script>
+    </div>
+]
+
+Options[SymbolsCode] = {"Expression" -> {}}
+
+
 existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
 
 getRepo[Rule[_, url_String]] := StringReplace[url, "https://github.com/"~~s_:>s]
@@ -44,10 +68,20 @@ HeadCode[OptionsPattern[]] := With[{
           Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
           <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
       , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
-  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]] 
+  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && TrueQ[WLJS`PM`Packages[#, "wljs-meta", "figureExportRequired"]] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]] 
     
 ,
-    <script type="module" src="https://cdn.jsdelivr.net/gh/JerryI/wljs-export-html@dev/dist/zip.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/JerryI/wljs-export-html@main/dist/zip.min.js"></script>
+,
+    <style>
+        .graphics2d-controller {
+            display: none
+        }
+        .graphics3d-controller {
+            display: none
+        }
+        /* customize .wljs-wrapper and .wljs-container to your needs */
+    </style>
 }]
 ]
 
