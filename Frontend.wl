@@ -15,9 +15,12 @@ Begin["`Internal`"]
 rootFolder = $InputFileName // DirectoryName;
 AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Settings.wlx"}] ];
 
+{loadSettings, storeSettings}        = ImportComponent["Frontend/Settings.wl"];
+
+settings = <||>;
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML.wlx"}] ];
-generateSlides = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides.wlx"}] ];
+generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides.wlx"}] ];
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown.wlx"}] ];
 
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
@@ -91,6 +94,45 @@ exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, 
     ]
 ]
 
+figuresModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal", "Figures.wlx"}] ];
+figuresCodeModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal", "FiguresCode.wlx"}] ];
+{figuresTemplate, figuresHead} = ImportComponent[FileNameJoin[{rootFolder, "Templates", "FiguresTemplate.wlx"}] ];
+
+
+exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+    objects = notebookOnLine["Objects"]
+},
+    With[{
+        p = Promise[]
+    },
+        EventFire[modals, "CustomModal", <|
+            "Promise"->p,
+            "Data" -> Keys[objects],
+            "Content" -> figuresModal,
+            "Client"->client
+        |>];
+
+        Then[p, Function[result,
+            With[{object = Values[objects][[result, "Public"]]},
+                loadSettings[settings];
+
+                With[{
+                    code = figuresTemplate["Expression" -> object],
+                    head = figuresHead["Settings" -> settings]
+                },
+                    EventFire[modals, "CustomModal", <|
+                        "Promise"->Null,
+                        "Data" -> <|"Code"->code, "Head"->head|>,
+                        "Content" -> figuresCodeModal,
+                        "Client"->client
+                    |>];
+                ]
+            ]
+        ] ];
+        
+    ]
+]
+
 exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
 
 },
@@ -131,9 +173,9 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"HTML", "Markdown", "Slides only"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"HTML", "Markdown", "Slides only", "Figures"}|>];
             Then[p, Function[choise,
-                {exportHTML, exportMarkdown, exportSlides}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                {exportHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
             ] ];
         ]
     ]

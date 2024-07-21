@@ -1,0 +1,57 @@
+compress[str_String] := With[{arr = Normal[ExportByteArray[str, "String"] ]},
+ BaseEncode[ByteArray[Developer`RawCompress[arr](*`*) ] ]
+];
+
+FigureCode[OptionsPattern[]] := With[{
+    JSON = compress[ExportString[OptionValue["Expression"], "ExpressionJSON", "Compact"->1] ],
+    UId  = CreateUUID[]
+},    
+    <div class="wljs-wrapper">
+        <div class="wljs-container" id="{UId}"></div>
+        <script type="module">
+            let payload = '<JSON/>';
+            payload = JSON.parse(interpretate.unzlib64String(payload));
+
+            const env = {element: document.getElementById('<UId/>'), global: {}};
+            const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
+            instance.assignScope(env);
+            instance.execute();
+        </script>
+    </div>
+]
+
+Options[FigureCode] = {"Expression" -> {}}
+
+existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
+
+getRepo[Rule[_, url_String]] := StringReplace[url, "https://github.com/"~~s_:>s]
+getBranch[Rule[_, url_String]] := "master"
+
+getRepo[Rule[_, Rule[url_String, _]]] := StringReplace[url, "https://github.com/"~~s_:>s]
+getBranch[Rule[_, Rule[url_String, branch_String]]] := branch
+
+HeadCode[OptionsPattern[]] := With[{
+    settings = OptionValue["Settings"]
+},
+  ToStringRiffle[Flatten @ {With[{
+    url = StringJoin[StringTemplate["https://cdn.jsdelivr.net/gh/``@``/"][getRepo[#["key"]], getBranch[#["key"]]], #["path"]]
+  },
+
+    <script type="module" src="{url}"></script>
+
+  ]& /@ Flatten[Table[
+      Table[
+          Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
+          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
+      , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
+  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]] 
+    
+,
+    <script type="module" src="https://cdn.jsdelivr.net/gh/JerryI/wljs-export-html@dev/dist/zip.min.js"></script>
+}]
+]
+
+Options[HeadCode] = {"Settings"->{}}
+
+
+{FigureCode, HeadCode}
