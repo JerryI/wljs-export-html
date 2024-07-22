@@ -100,7 +100,8 @@ figuresCodeModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal
 
 
 exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
-    objects = notebookOnLine["Objects"]
+    objects = notebookOnLine["Objects"],
+    sym     = notebookOnLine["Symbols"]
 },
     With[{
         p = Promise[]
@@ -116,17 +117,66 @@ exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, p
             With[{object = Values[objects][[result, "Public"]]},
                 loadSettings[settings];
 
-                With[{
-                    code = figuresTemplate["Expression" -> object],
-                    head = figuresHead["Settings" -> settings]
-                },
-                    EventFire[modals, "CustomModal", <|
-                        "Promise"->Null,
-                        "Data" -> <|"Code"->code, "Head"->head|>,
-                        "Content" -> figuresCodeModal,
-                        "Client"->client
-                    |>];
-                ]
+                If[AssociationQ[sym] && TrueQ[Length[Keys[sym] ] > 0],
+
+                    With[{request = CreateUUID[]},
+                        EventHandler[request, {
+                            "Success" -> Function[Null, 
+                                EventRemove[request];
+
+                                With[{
+                                    code = figuresTemplate["Expression" -> object, "Symbols" -> sym],
+                                    head = figuresHead["Settings" -> settings]
+                                },
+                                    EventFire[modals, "CustomModal", <|
+                                        "Promise"->Null,
+                                        "Data" -> <|"Code"->code, "Head"->head|>,
+                                        "Content" -> figuresCodeModal,
+                                        "Client"->client
+                                    |>];
+                                ]                        
+                            ],
+
+                            _ -> Function[Null,
+                                EventRemove[request];
+                                With[{
+                                    code = figuresTemplate["Expression" -> object],
+                                    head = figuresHead["Settings" -> settings]
+                                },
+                                    EventFire[modals, "CustomModal", <|
+                                        "Promise"->Null,
+                                        "Data" -> <|"Code"->code, "Head"->head|>,
+                                        "Content" -> figuresCodeModal,
+                                        "Client"->client
+                                    |>];
+                                ]                                 
+                            ]
+                        }];
+
+                        EventFire[modals, "GenericAskTemplate", <|
+                            "Callback" -> request, 
+                            "Client" -> client,
+                            "Title" -> "Should we include dynamic symbols?", 
+                            "Content" -> StringJoin["We found ", ToString[Length[Keys[sym] ] ], " symbols stored in the notebook."],
+                            "SVGIcon" -> With[{},
+                                ""
+                            ]
+                        |>];
+
+                ];
+                ,
+                    With[{
+                        code = figuresTemplate["Expression" -> object],
+                        head = figuresHead["Settings" -> settings]
+                    },
+                        EventFire[modals, "CustomModal", <|
+                            "Promise"->Null,
+                            "Data" -> <|"Code"->code, "Head"->head|>,
+                            "Content" -> figuresCodeModal,
+                            "Client"->client
+                        |>];
+                    ]                
+                ];
             ]
         ] ];
         

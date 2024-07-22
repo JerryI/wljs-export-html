@@ -4,23 +4,54 @@ compress[str_String] := With[{arr = Normal[ExportByteArray[str, "String"] ]},
 
 FigureCode[OptionsPattern[]] := With[{
     JSON = compress[ExportString[OptionValue["Expression"], "ExpressionJSON", "Compact"->1] ],
+    Sym  = compress[ExportString[OptionValue["Symbols"], "ExpressionJSON", "Compact"->1] ],
     UId  = CreateUUID[]
 },    
-    <div class="wljs-wrapper">
-        <div class="wljs-container" id="{UId}"></div>
-        <script type="module">
-            let payload = '<JSON/>';
-            payload = JSON.parse(interpretate.unzlib64String(payload));
+    If[AssociationQ @ OptionValue["Symbols"],
+        <div class="wljs-wrapper">
+            <div class="wljs-container" id="{UId}"></div>
+            <script type="module">
+                let symbols = '<Sym/>';
+                symbols = await interpretate(JSON.parse(interpretate.unzlib64String(symbols)), {hold:true});
+                Object.keys(symbols).forEach(element => {
+                    core[element] = async (args, env) => {
+                        return await interpretate(core[element].data, env)
+                    };
 
-            const env = {element: document.getElementById('<UId/>'), global: {}};
-            const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
-            instance.assignScope(env);
-            instance.execute();
-        </script>
-    </div>
+                    core[element].data = symbols[element];                    
+                });
+                //polyfill
+                core.Offload = (args, env) => interpretate(args[0], env)
+
+                let payload = '<JSON/>';
+                payload = JSON.parse(interpretate.unzlib64String(payload));
+
+                const env = {element: document.getElementById('<UId/>'), global: {}};
+                const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
+                instance.assignScope(env);
+                instance.execute();
+            </script>
+        </div>
+
+    ,
+
+        <div class="wljs-wrapper">
+            <div class="wljs-container" id="{UId}"></div>
+            <script type="module">
+                let payload = '<JSON/>';
+                payload = JSON.parse(interpretate.unzlib64String(payload));
+    
+                const env = {element: document.getElementById('<UId/>'), global: {}};
+                const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
+                instance.assignScope(env);
+                instance.execute();
+            </script>
+        </div>
+    ]
+
 ]
 
-Options[FigureCode] = {"Expression" -> {}}
+Options[FigureCode] = {"Expression" -> {}, "Symbols" -> Null}
 
 
 SymbolsCode[OptionsPattern[]] := With[{
