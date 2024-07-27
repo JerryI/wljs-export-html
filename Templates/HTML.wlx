@@ -191,12 +191,22 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
+            <style>
+              .cwrapper {
+                padding-top: 0.25rem;
+                padding-bottom: 0.25rem;
+              }
+            </style>
         </head>  
         <body class="h-full dark:bg-gray-700 bg-white"> 
           <div>
-            <div class="pl-2" id="frame">
+            <div class="pl-2" id="frame" style="
+              width: 80%;
+              margin-left: auto;
+              margin-right: auto;
+            ">
               <div class="h-full flex flex-col">
-                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 m-4 mt-2 rounded-lg bg-white shadow">
+                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
                     <CellsContainer Notebook={notebook}></CellsContainer>
                 </main>
               </div>

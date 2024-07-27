@@ -5,7 +5,7 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
     With[{client = Global`$Client(*`*)},
     Echo[client];
    
-    EventFire[Messager, spinner, Null];
+    
     With[{p = decode[Path, "Messager"->Messager, "Client"->client]},
             Echo[p];
             Then[p, Function[result,

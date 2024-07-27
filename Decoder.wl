@@ -22,9 +22,9 @@ check[path_String] := Module[{str, result},
     result
 ]
 
-decodeHTML[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store, symbols},
+decodeHTML[path_String | path_File, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store, symbols, place},
 With[{
-    dir = DirectoryName[path],
+    dir = AppExtensions`QuickNotesDir,
     name = FileBaseName[path],
     promise = Promise[],
     start = "<meta serializer=\"hsfn-4\"/><script id=\"json-objects\" type=\"application/json\">{\"storage\":",
@@ -63,17 +63,20 @@ With[{
     notebook = <|
         "Notebook" -> <|
             "Objects" -> (<|"Public"->#|>&/@ objects), 
-            "Path" -> FileNameJoin[{dir, name<>".wln"}],
             "Storage" -> store,
-            "Symbols" -> symbols
+            "Symbols" -> symbols,
+            "HaveToSaveAs" -> True,
+            "Quick" -> True
         |>, 
         "Cells" -> (#["Data"] &/@cells["Cells"]),
         "serializer" -> "jsfn4" 
     |>;
 
-    Put[notebook, FileNameJoin[{dir, name<>".wln"}] ];
+    place = FileNameJoin[{dir, name<>StringTake[CreateUUID[], 3]<>".wln"}];
+    Put[notebook,  place];
+    
     EventFire[spinner["Promise"], Resolve, True];
-    EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
+    EventFire[promise, Resolve,  place];
     promise
 ] ]
 
@@ -89,7 +92,7 @@ lang[any_String] := StringJoin[".", any, "\n"]
 
 decodeMD[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
 With[{
-    dir = DirectoryName[path],
+    dir = AppExtensions`QuickNotesDir,
     name = FileBaseName[path],
     promise = Promise[],
     msg = OptionValue["Messager"],
@@ -103,7 +106,9 @@ With[{
 
     notebook = Notebook[];
     With[{n = notebook},
-        n["Path"] = FileNameJoin[{dir, name<>".wln"}];
+        n["Quick"] = True;
+        n["HaveToSaveAs"] = True;
+        n["Path"] = FileNameJoin[{dir, name<>StringTake[CreateUUID[], 3]<>".wln"}];
     ];
 
 
@@ -157,7 +162,7 @@ With[{
     Echo["SAVING////////"];
     Then[saveNotebook[notebook], Function[Null,
       EventFire[spinner["Promise"], Resolve, True];
-      EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
+      EventFire[promise, Resolve, notebook["Path"] ];
     ] ];
 
    promise 
@@ -264,7 +269,7 @@ decodeMathematica[opts__][path_String, secondaryOpts___] := Module[{
   str, cells, objects, notebook, nb, store, options
 },
 With[{
-    dir = DirectoryName[path],
+    dir = AppExtensions`QuickNotesDir,
     name = FileBaseName[path],
     promise = Promise[],
     spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*)
@@ -275,7 +280,9 @@ With[{
 
     notebook = Notebook[];
     With[{n = notebook},
-        n["Path"] = FileNameJoin[{dir, name<>".wln"}];
+        n["Quick"] = True;
+        n["HaveToSaveAs"] = True;    
+        n["Path"] = FileNameJoin[{dir, name<>StringTake[CreateUUID[], 3]<>".wln"}];
     ];
 
     
@@ -305,7 +312,7 @@ With[{
       
                       Echo["SAVING////////"];
                       Then[saveNotebook[notebook], Function[Null,
-                        EventFire[promise, Resolve, FileNameJoin[{dir, name<>".wln"}] ];
+                        EventFire[promise, Resolve, notebook["Path"] ];
                       ] ];
                     ] ]; 
 

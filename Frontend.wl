@@ -241,6 +241,39 @@ AppExtensions`SidebarIcons = ImportComponent[FileNameJoin[{rootFolder, "Template
 (* reader of HTML and MD files *)
 {checkEncoding, decodeHTML, decodeMD, decodeMathematica} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
 
+EventHandler[AppExtensions`AppProtocol, {
+    "open_html" -> Function[assoc,
+        Echo[">> Handling URL protocol ! >>"];
+        Echo[assoc["url"] ];
+        Module[{path = assoc["url"]},
+            If[StringTake[path, 5] === "file:",
+                Echo["Local file!"];
+                path = If[$OperatingSystem === "Windows",
+                    FileNameJoin[StringSplit[StringDrop[path, 6], "/"] ],
+                    "/"<>FileNameJoin[StringSplit[StringDrop[path, 5], "/"] ]
+                ];
+                Echo["Local path:"];
+                Echo[path];
+            ,
+                Echo["Web resource"];
+                Echo["Downloading..."];
+                path = URLDownload[path];
+            ];
+
+            With[{p = decodeHTML[path, "Messager"->assoc["Messanger"], "Client"->assoc["Client"] ]},
+                Echo[p];
+                Then[p, Function[result,
+                  Pause[1];
+                  Echo[result];
+                  (*/*EventFire[spinner["Promise"], Resolve, True];*/*)
+                  WebUILocation[ StringJoin["/", URLEncode[ result ] ], assoc["Client"] ] // Echo;
+
+                ] ];
+            ];
+        ];
+    ]
+}]
+
 LoaderComponent = ImportComponent[ FileNameJoin[{rootFolder, "Templates", "Loader.wlx"}] ];
 
 Echo["DecoderLoaded!"];
