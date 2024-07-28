@@ -2,13 +2,7 @@ id = $Options["Notebook"]["Hash"];
 Color = If[StringQ[#], #, "teal"]& @ ($Options["Parameters"]["AccentColor"]);
 
 <div class="ccontainer px-3 pr-4 py-2 sm:px-2 sm:pr-3 md:px-4 md:pr-5 overflow-y-auto grow bg-white" style=" padding-bottom: 5rem; position: relative; margin-top: 1rem;" id="container-{id}">
-    <button class="p-1 px-2 hover:bg-gray-100 rounded right-0 absolute text-gray-400" id="reopen_in_app" style="
-        right: 1rem;
-        /* width: calc(10%); */
-        /* display: flex; */
-        z-index: 150;
-    ">Open in WLJS Notebook
-    </button>
+    <button class="p-1 px-2 hover:bg-gray-100 rounded right-0 absolute text-gray-400" id="reopen_in_app" style="right: 1rem; z-index: 150;">Open in WLJS Notebook</button>
     <script>
             document.getElementById('reopen_in_app').addEventListener('click', () => {
               const a = document.createElement('a');
