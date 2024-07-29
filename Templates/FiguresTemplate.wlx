@@ -111,6 +111,9 @@ HeadCode[OptionsPattern[]] := With[{
         .graphics3d-controller {
             display: none
         }
+        .g3d-label {
+            font-size: small;
+        }
         /* customize .wljs-wrapper and .wljs-container to your needs */
     </style>
 }]
