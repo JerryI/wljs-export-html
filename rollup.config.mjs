@@ -45,5 +45,23 @@ export default [{
   json(),
   commonjs({transformMixedEsModules:true})
   ]
+},
+{
+
+  input: 'src/decoder.js',
+  
+  output: [{
+    dir: 'dist/',
+    format: "es",
+    strict: false
+  }],
+  plugins    : [
+  nodeResolve({
+    jsnext: true,
+    main: false
+  }),
+  json(),
+  commonjs({transformMixedEsModules:true})
+  ]
 }
 ];

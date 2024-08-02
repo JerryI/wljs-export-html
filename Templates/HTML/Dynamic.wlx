@@ -163,20 +163,31 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   ]
 ];
 
-KernelScripts[OptionsPattern[]] := With[{Test = Import[FileNameJoin[{OptionValue["Root"], "test", "output.txt"}], "Text"], JSModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "transformer.js"}], "Text"]},
-  <script type="module">
-    <JSModule/>;;
-    const mesh = '<Test/>';
-    window._kernels = [KernelMesh.unpack(mesh)];
-  </script>
+KernelScripts[OptionsPattern[]] := With[{Payload = ExportString[OptionValue["Compressed"], "JSON"], ZIPModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "zip.js"}], "Text"], JSModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "decoder.js"}], "Text"]},
+  {
+    <script type="module">
+      <JSModule/>
+    </script>
+  ,    
+    <script type="module">
+      <ZIPModule/>
+    </script>
+  ,
+    <script type="module">
+      let mesh = <Payload/>;
+      mesh = mesh.map((m) => interpretate.unzlib64String(m));
+      window._kernels = mesh.map(KernelMesh.unpack);
+    </script>
+  } // StringRiffle
 ]
 
-Options[KernelScripts] = {"Root"->""}
+Options[KernelScripts] = {"Root"->"", "Compressed" -> {}}
 
 Component[OptionsPattern[]] := Module[{settings}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
   root = OptionValue["Root"],
+  compressed = OptionValue["Compressed"],
   RootStyles = ProduceStyles[OptionValue["Root"]],
   nid = OptionValue["Notebook"]["Hash"]
 },
@@ -223,7 +234,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
               </div>
             </div>
           </div> 
-          <KernelScripts Root={root} Notebook={notebook}/>  
+          <KernelScripts Root={root} Notebook={notebook} Compressed={compressed}/>  
           <script type="module">
             window.server = {
               emitt: () => {},
@@ -336,6 +347,6 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
   } // StringRiffle
 ]]
 
-Options[Component] = {"Title" -> "Example", "Notebook"->""}
+Options[Component] = {"Title" -> "Example", "Notebook"->"", "Compressed"->{}}
 
 Component

@@ -182,7 +182,7 @@ export class SamplerNode {
 
   pump() {
     server.emitt(this.channel, `<|"Info" -> "Compressing data", "Max" -> 1.0, "Bar" -> 0.3|>`, 'Progress'); 
-    return this.groups;
+    return this.groups.map((g) => g.mesh);
   }
 
 

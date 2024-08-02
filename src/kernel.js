@@ -5,7 +5,7 @@ core["Notebook`Editor`ExportNotebook`Internal`Sniffer"] = async (args, env) => {
 
 core["Notebook`Editor`ExportNotebook`Internal`Sampler"] = async (args, env) => {
     const cmd = await interpretate(args[0], env);
-    core["Notebook`Editor`ExportNotebook`Internal`Sampler"][cmd](args.slice(1), env);
+    return core["Notebook`Editor`ExportNotebook`Internal`Sampler"][cmd](args.slice(1), env);
 }
 
 let instance = {};
@@ -40,7 +40,9 @@ core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Dispose = async (args, e
 }
 
 core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Get = async (args, env) => {
-    return instance.sampler.pump()
+    const c = instance.sampler.pump();
+    console.log(c);
+    return c;
 }
 
 core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Eject = async (args, env) => {

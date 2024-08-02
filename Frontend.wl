@@ -12,6 +12,10 @@ BeginPackage["Notebook`Editor`ExportNotebook`", {
 
 Begin["`Internal`"]
 
+compress[str_String] := With[{arr = Normal[ExportByteArray[str, "String"] ]},
+ BaseEncode[ByteArray[Developer`RawCompress[arr](*`*) ] ]
+];
+
 rootFolder = $InputFileName // DirectoryName;
 AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Settings.wlx"}] ];
 
@@ -208,7 +212,50 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
         ],
 
         "Continue" -> Function[Null,
-            
+            Then[WebUIFetch[Sampler["Get",  channel], client, "Format"->"RawJSON"], Function[payload,
+                
+                
+                With[{compressed = compress /@ payload},
+                
+                    WebUISubmit[Sampler["Stop",  channel], client];
+                    WebUISubmit[Sampler["Dispose",  channel], client];
+                    WebUISubmit[Sniffer["Purge", channel], client];
+                    
+                    Delete[notification];
+
+                    With[{ratio = Round[ByteCount[payload] / ByteCount[compressed], 0.1] },
+                        EventFire[messager, Notifications`NotificationMessage["Info"], "Compressed by <span class=\"font-semibold\">"<>ToString[ratio]<>"</span>"]
+                        Echo["Compressed by the factor of "<>ToString[ratio] ]; 
+                        
+
+                        With[{
+                            p = Promise[]
+                        },
+                            EventFire[modals, "RequestPathToSave", <|
+                                "Promise"->p,
+                                "Title"->"Portable notebook",
+                                "Ext"->"html",
+                                "Client"->client
+                            |>];
+
+                            Then[p, Function[result, 
+                                Module[{filename = result<>".html"},
+                                    If[filename === ".html", filename = name<>filename];
+                                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "Compressed"->compressed, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                                    EventFire[messager, "Saved", "Exported to "<>filename];
+                                ];
+                            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+
+                        ]                       
+                    ];
+
+
+
+                    
+                ]
+
+            ] ];
         ]
     }];
 
@@ -241,6 +288,8 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
             Delete[notification];
         ]
     }];
+
+    EventFire[messager, Notifications`Beeper[], True];
     
     WebUISubmit[Sniffer["Inject", sniffer], client];
     notification = Notifications`Custom["Topic"->"Analysing dynamic bindings", "Body"->analyser["Sniffer"->sniffer, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
@@ -248,35 +297,6 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
 
 ] ]
 
-000000exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
-
-},
-    With[{
-
-    },
-        
-        With[{
-            p = Promise[]
-        },
-            EventFire[modals, "RequestPathToSave", <|
-                "Promise"->p,
-                "Title"->"Portable notebook",
-                "Ext"->"html",
-                "Client"->client
-            |>];
-
-            Then[p, Function[result, 
-                Module[{filename = result<>".html"},
-                    If[filename === ".html", filename = name<>filename];
-                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
-                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
-                    EventFire[messager, "Saved", "Exported to "<>filename];
-                ];
-            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
-            
-        ]
-    ]
-]
 
 exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
 

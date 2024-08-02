@@ -13,12 +13,15 @@ export class KernelMesh {
     }
     
     serialize() {
-      return encodeURIComponent(JSON.stringify({db:Object.fromEntries(this.database), wl:this.whitelist}));
+      return JSON.stringify({db:Object.fromEntries(this.database), wl:this.whitelist});
     }
     
     static unpack(string) {
-      const data = JSON.parse( decodeURIComponent( string ));
-      const o = new KernelMesh({database: new Map(Object.entries(data.db)), whitelist: data.wl});
+      const data = JSON.parse(  string );
+      const wlKeys = {};
+      data.wl.forEach((k) => wlKeys[k] = true);
+
+      const o = new KernelMesh({eventObjects: wlKeys}, new Map(Object.entries(data.db)));
       return o;
     }
 }

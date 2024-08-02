@@ -13,8 +13,8 @@ makeTable[data_Association] := With[{
     },
         <tr>
             <td style="max-width: 4rem;" class="whitespace-nowrap truncate w-8 py-2 pl-4 pr-3 text-sm text-gray-500"><Title/></td>
-            <td style="max-width: 4rem;" class="whitespace-nowrap truncate w-8 px-2 py-2 text-sm font-medium text-gray-500"><Pattern/></td>
-            <td class="whitespace-nowrap px-2 py-2 text-sm text-gray-900"><Count/></td>
+            <td style="max-width: 4rem;" class="whitespace-nowrap truncate w-8 px-2 py-2 text-sm font-medium text-gray-500 dark:text-gray-400"><Pattern/></td>
+            <td class="whitespace-nowrap px-2 py-2 text-sm text-gray-900 dark:text-gray-400"><Count/></td>
             <td class="whitespace-nowrap px-2 py-2 text-sm text-gray-500">
                 <div class="flex flex-col truncate" style="max-width: 4rem;">
                     <ListSymbols/>
@@ -45,16 +45,16 @@ EventHandler[sniffer, {
 }];
 
 <div style="display: table-caption;">
-    <p class="text-sm leading-4 py-1 mt-1 text-gray-600">Please, drag all sliders in a full range, activate other input element or wait for animation frames.</p>
+    <p class="text-sm leading-4 py-1 mt-1 text-gray-600 dark:text-gray-400">Please, drag all sliders in a full range, activate other input element or wait for animation frames.</p>
     <span class="text-sm uppercase text-gray-500">Found connections</span>
     <div class="inline-block min-w-full py-2 align-middle">
         <table class="min-w-full divide-y divide-gray-300">
             <thead>
                 <tr>
-                    <th scope="col" class="whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Event</th>
-                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Pattern</th>
-                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Calls</th>
-                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900">Symbols</th>
+                    <th scope="col" class="whitespace-nowrap py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-400 sm:pl-0">Event</th>
+                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-400">Pattern</th>
+                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-400">Calls</th>
+                    <th scope="col" class="whitespace-nowrap px-2 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-400">Symbols</th>
                 </tr>
             </thead>
             <WebUILazyLoad Event={controller} Class={"divide-y divide-gray-200"} Tag={"tbody"}>

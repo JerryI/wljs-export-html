@@ -19,12 +19,12 @@ EventHandler[controller, {
 }];
 
 <div style="display: table-caption;">
-    <p class="text-sm leading-4 py-1 mt-1 text-gray-600">Please, wait.</p>
+    <p class="text-sm leading-4 py-1 mt-1 text-gray-600 dark:text-gray-400">Please, wait.</p>
     <span class="text-sm uppercase text-gray-500">Progress</span>
     <div class="inline-block min-w-full py-2 align-middle">
-        <div class="w-full bg-gray-200 rounded p-1"><div id="sbba-bar" class="bg-teal-400 w-full h-3 rounded"></div></div>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"><div id="sbba-bar" class="bg-teal-400 w-full h-3 rounded"></div></div>
         <span class="text-sm leading-4 text-gray-400" id="sbba-info"></span>
-        <p class="text-sm leading-4 py-1 mt-1 text-gray-600"><span id="sbba-size">0</span> kB</p>
+        <p class="text-sm leading-4 py-1 mt-1 text-gray-600 dark:text-gray-400"><span id="sbba-size">0</span> kB</p>
     </div>
     <div class="py-1">
         <span class="text-red-400" id="sbba-msg"></span>

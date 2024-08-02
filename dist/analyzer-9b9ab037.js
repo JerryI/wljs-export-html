@@ -178,6 +178,32 @@ function filterKeys(object, filterFunction) {
 
 const eventNameToString = (ev) => (String(ev.uid) + String(ev.pattern));
 
+class KernelMesh {
+    constructor(group, database) {
+      this.database = database;
+      this.whitelist = Object.keys(group.eventObjects);
+      return this;
+    }
+    
+    test(msg) {
+  
+      return this.whitelist.includes(eventNameToString(msg));
+    }
+    
+    serialize() {
+      return JSON.stringify({db:Object.fromEntries(this.database), wl:this.whitelist});
+    }
+    
+    static unpack(string) {
+      const data = JSON.parse(  string );
+      const wlKeys = {};
+      data.wl.forEach((k) => wlKeys[k] = true);
+
+      const o = new KernelMesh({eventObjects: wlKeys}, new Map(Object.entries(data.db)));
+      return o;
+    }
+}
+
 const letters = 'ABCDEFGHIJKLMNOP';
 const numbers = '123456789';
 
@@ -338,4 +364,4 @@ var analyzer = /*#__PURE__*/Object.freeze({
   AnalyzerNode: AnalyzerNode
 });
 
-export { AnalyzerNode as A, analyzer as a, eventNameToString as e };
+export { AnalyzerNode as A, KernelMesh as K, analyzer as a, eventNameToString as e };

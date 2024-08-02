@@ -1,4 +1,4 @@
-import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-8167495c.js';
+import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-9b9ab037.js';
 
 /* eslint-disable no-use-before-define */
 
@@ -6424,6 +6424,7 @@ if (performance.memory)
 
 class SamplerNode {
   que = {}
+  aborted = false
 
   channel = ''
   emitter = () => {}
@@ -6520,15 +6521,26 @@ class SamplerNode {
 
   }
 
+  stop() {
+    this.aborted = true;
+  }
+
   async start() {
     for (let group of this.groups) {
       console.log('Sampling... group');
       await this.sample(group);
     }
 
+    const totalSize = this.groups.reduce((acc, curr) => acc + (curr.mesh.length *2), 0);
     console.warn('Finished!');
-    server.emitt(this.channel, `<|"Info" -> "Finished!", "Max" -> 1.0, "Bar" -> 1.0|>`, 'Progress'); 
+    server.emitt(this.channel, `<|"Info" -> "Finished!", "Size" -> ${totalSize / 1024}, "Max" -> 1.0, "Bar" -> 1.0|>`, 'Progress'); 
+    server.emitt(this.channel, 'True', 'Done'); 
     console.warn(this.groups);
+  }
+
+  pump() {
+    server.emitt(this.channel, `<|"Info" -> "Compressing data", "Max" -> 1.0, "Bar" -> 0.3|>`, 'Progress'); 
+    return this.groups.map((g) => g.mesh);
   }
 
 
@@ -6537,7 +6549,7 @@ class SamplerNode {
     let individualPoints = [];
     const map = new Map();
 
-    const mem_before = mem();
+    mem();
 
     let list = Object.values(group.eventObjects).filter((o) => (!o.animation));
 
@@ -6561,9 +6573,12 @@ class SamplerNode {
       console.warn('Reset to initial state!');
       //let state = new KernelState();
 
+      if (this.aborted) return;
+
       //reset
       for (const ev of list) {
         await this._singleStep(ev, ev.data[0]);
+        if (this.aborted) return;
       }
 
       console.warn('reseted succesfully');
@@ -6576,17 +6591,21 @@ class SamplerNode {
       let index = 0;
       for (const d of event.data) {
         index += 1;
-        server.emitt(this.channel, `<|"Info" -> "Sampling ${event.data.length} points", "Size" -> ${mem() - mem_before}, "Max" -> ${event.data.length}, "Bar" -> ${index}|>`, 'Progress');
+        if (this.aborted) return;
+        server.emitt(this.channel, `<|"Info" -> "Sampling ${event.data.length} points", "Max" -> ${event.data.length}, "Bar" -> ${index}|>`, 'Progress');
         state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: d});
         const symbolData = await this._singleStep(event, d);
         symbolData.forEach((s) => {
           state.set(s, map);
         });
       }
+
+      if (this.aborted) return;
       
     }
     if (list.length > 1) {
 
+      if (this.aborted) return;
       console.warn('Go reqursively!');
       console.warn('Reset to initial state!');
       //let state = new KernelState();
@@ -6594,9 +6613,12 @@ class SamplerNode {
       //reset
       for (const ev of list) {
         await this._singleStep(ev, ev.data[0]);
+        if (this.aborted) return;
       }
 
       let state;
+
+      if (this.aborted) return;
 
       const requr = async (depth = 0, state, progress) => {
         if (depth >= list.length) return;
@@ -6611,6 +6633,7 @@ class SamplerNode {
             state.set(s, map);
           });
 
+          if (this.aborted) return;
           await requr(depth + 1, state, progress);
         }
       };
@@ -6620,22 +6643,31 @@ class SamplerNode {
 
       await requr(0, state, () => {
         progress = progress + 1;
-        server.emitt(this.channel, `<|"Info" -> "Sampling recursively ${max} points", "Max" -> ${max}, "Size" -> ${mem() - mem_before}, "Bar" -> ${progress}|>`, 'Progress');
+        if (this.aborted) return;
+        server.emitt(this.channel, `<|"Info" -> "Sampling recursively ${max} points", "Max" -> ${max}, "Bar" -> ${progress}|>`, 'Progress');
       });
+
+      if (this.aborted) return;
 
       
     }
 
     console.warn('Checking animations');
+    if (this.aborted) return;
 
     list = Object.values(group.eventObjects).filter((o) => (o.animation));
     if (list.length) {
       throw list;
     }
 
-    group.mesh = new KernelMesh(group, map);
+    group.mesh = (new KernelMesh(group, map)).serialize();
     
     return group;
+  }
+
+  dispose() {
+    server.emitt(this.channel, `<|"Max" -> 1.0, "Bar" -> 1.0|>`, 'Progress'); 
+    delete this.groups;
   }
 
 
