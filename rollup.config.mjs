@@ -4,9 +4,9 @@ import json from "@rollup/plugin-json";
 
 import terser from '@rollup/plugin-terser';
 
-export default {
+export default [{
 
-  input: 'zip.js',
+  input: 'src/zip.js',
   
   output: [{
     file: 'dist/zip.min.js',
@@ -27,4 +27,23 @@ export default {
   json(),
   commonjs({transformMixedEsModules:true})
   ]
-};
+},
+{
+
+  input: 'src/kernel.js',
+  
+  output: [{
+    dir: 'dist/',
+    format: "es",
+    strict: false
+  }],
+  plugins    : [
+  nodeResolve({
+    jsnext: true,
+    main: false
+  }),
+  json(),
+  commonjs({transformMixedEsModules:true})
+  ]
+}
+];

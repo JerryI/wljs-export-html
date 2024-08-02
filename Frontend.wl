@@ -1,4 +1,4 @@
-BeginPackage["Notebook`Editor`ExportHTML`", {
+BeginPackage["Notebook`Editor`ExportNotebook`", {
     "JerryI`Notebook`", 
     "JerryI`Misc`Events`",
     "JerryI`Misc`Events`Promise`",
@@ -19,9 +19,10 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 
 settings = <||>;
 
-generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML.wlx"}] ];
-generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides.wlx"}] ];
-generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown.wlx"}] ];
+generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Static.wlx"}] ];
+generateDynamicNotebook= ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Dynamic.wlx"}] ];
+generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides", "Static.wlx"}] ];
+generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown", "Markdown.wlx"}] ];
 
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
 
@@ -96,7 +97,7 @@ exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, 
 
 figuresModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal", "Figures.wlx"}] ];
 figuresCodeModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal", "FiguresCode.wlx"}] ];
-{figuresTemplate, figuresHead} = ImportComponent[FileNameJoin[{rootFolder, "Templates", "FiguresTemplate.wlx"}] ];
+{figuresTemplate, figuresHead} = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Figures", "Template.wlx"}] ];
 
 
 exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
@@ -183,6 +184,100 @@ exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, p
     ]
 ]
 
+
+Notebook`Editor`ExportNotebook`Internal`Sniffer;
+Notebook`Editor`ExportNotebook`Internal`Sampler;
+
+analyser = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Analyser.wlx"}] ];
+sampler = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Sampler.wlx"}] ];
+
+sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := Module[{
+    notification
+}, With[{
+    channel = CreateUUID[]
+},
+
+    
+
+    EventHandler[channel, {
+        "Abort" -> Function[Null,
+            WebUISubmit[Sampler["Stop",  channel], client];
+            WebUISubmit[Sampler["Dispose",  channel], client];
+            WebUISubmit[Sniffer["Purge", channel], client];
+            Delete[notification];
+        ],
+
+        "Continue" -> Function[Null,
+            
+        ]
+    }];
+
+    WebUISubmit[Sampler["Init",  channel], client];
+
+    notification = Notifications`Custom["Topic"->"Sampling the data", "Body"->sampler["Channel"->channel, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
+    EventFire[messager, notification, True];
+] ]
+
+exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := Module[{notification, dump, raw, groups}, With[{
+    sniffer = CreateUUID[]
+},
+    If[notebookOnLine["Evaluator"]["Kernel"]["State"] =!= "Initialized", 
+        EventFire[messager, "Error", "Exporting dynamic HTML document requires connected Kernel and initialized notebook session."];
+        Return[];
+    ];
+
+
+    EventHandler[sniffer, {
+        "Continue" -> Function[Null,
+            WebUISubmit[Sniffer["Eject", sniffer], client];
+            sampling[controls, modals, messager, client, notebookOnLine, path, name];
+
+            Delete[notification];
+        ],
+
+        "Abort" -> Function[Null,
+            WebUISubmit[Sniffer["Eject", sniffer], client];
+            WebUISubmit[Sniffer["Purge", sniffer], client];
+            Delete[notification];
+        ]
+    }];
+    
+    WebUISubmit[Sniffer["Inject", sniffer], client];
+    notification = Notifications`Custom["Topic"->"Analysing dynamic bindings", "Body"->analyser["Sniffer"->sniffer, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
+    EventFire[messager, notification, True];
+
+] ]
+
+000000exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+
+},
+    With[{
+
+    },
+        
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"Portable notebook",
+                "Ext"->"html",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".html"},
+                    If[filename === ".html", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]
+    ]
+]
+
 exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
 
 },
@@ -223,9 +318,9 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"HTML", "Markdown", "Slides only", "Figures"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures"}|>];
             Then[p, Function[choise,
-                {exportHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
             ] ];
         ]
     ]
