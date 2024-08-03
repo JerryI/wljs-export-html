@@ -221,23 +221,41 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ControlsScript/>   
           </script> 
           <script type="module">
-            const jsonstorage = document.getElementById('json-symbols');
-            const store = JSON.parse(jsonstorage.innerText)["storage"];
+          const jsonstorage = document.getElementById('json-symbols');
+          const store = JSON.parse(jsonstorage.innerText)["storage"];
 
-            const a = async () => {
-              const assoc = await interpretate(store, {hold:true});
+          const a = async () => {
+            const assoc = await interpretate(store, {hold:true});
 
-              Object.keys(assoc).forEach(element => {
-                core[element] = async (args, env) => {
-                  return await interpretate(core[element].data, env)
-                };
+            Object.keys(assoc).forEach(element => {
 
-                core[element].data = assoc[element];
-              });
-            }
+              core[element] = async (args, env) => {
+                console.log('IE: calling our symbol...');
+                if (env.root && !env.novirtual) core[element].instances[env.root.uid] = env.root;
+                const data = await interpretate(core[element].data, env);
+                return data;
+              };
+            
+              core[element].update = async (args, env) => {
+                const data = await interpretate(core[element].data, env);
+                //if (env.hold) return ['JSObject', data];
+                return data;
+              }  
+            
+              core[element].destroy = async (args, env) => {
+                delete core[name].instances[env.root.uid];
+                console.warn('external symbol was destoryed');
+              }                 
 
-            a(store);
-          </script>          
+              core[element].virtual = true;
+              core[element].instances = {};
+
+              core[element].data = assoc[element];
+            });
+          }
+
+           a(store);
+          </script>           
           <script type="module">
             const jsonstorage = document.getElementById('json-objects');
             const store = JSON.parse(jsonstorage.innerText)["storage"];

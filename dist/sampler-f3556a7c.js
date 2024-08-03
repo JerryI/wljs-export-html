@@ -1,4 +1,4 @@
-import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-9b9ab037.js';
+import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-4aa51cef.js';
 
 /* eslint-disable no-use-before-define */
 
@@ -6363,37 +6363,6 @@ class KernelState {
   }
 }
 
-function memorySizeOf(obj) {
-  var bytes = 0;
-
-  function sizeOf(obj) {
-    if (obj !== null && obj !== undefined) {
-      switch (typeof obj) {
-        case "number":
-          bytes += 8;
-          break;
-        case "string":
-          bytes += obj.length * 2;
-          break;
-        case "boolean":
-          bytes += 4;
-          break;
-        case "object":
-          var objClass = Object.prototype.toString.call(obj).slice(8, -1);
-          if (objClass === "Object" || objClass === "Array") {
-            for (var key in obj) {
-              if (!obj.hasOwnProperty(key)) continue;
-              sizeOf(obj[key]);
-            }
-          } else bytes += obj.toString().length * 2;
-          break;
-      }
-    }
-    return bytes;
-  }
-  return sizeOf(obj);
-}
-
 function removeDuplicates(arr) {
   // Use a Set to automatically handle uniqueness
   const uniqueElements = new Set(arr);
@@ -6403,18 +6372,18 @@ function removeDuplicates(arr) {
 
 function countDuplicates(arr) {
   const seen = new Set();
-  const duplicates = new Set();
+  let duplicateCount = 0;
 
   for (let i = 0; i < arr.length; i++) {
-      const elem = arr[i];
-      if (seen.has(elem)) {
-          duplicates.add(elem);
-      } else {
-          seen.add(elem);
-      }
+    const elem = arr[i];
+    if (seen.has(elem)) {
+      duplicateCount++;
+    } else {
+      seen.add(elem);
+    }
   }
 
-  return duplicates.size;
+  return duplicateCount;
 }
 
 let mem = () => 0;
@@ -6453,7 +6422,8 @@ class SamplerNode {
       return {...g, eventObjects: this.process(g)};
     });
 
-    this.groups.map(this.checkAnimations);
+    console.log(this.animationDump);
+    this.groups.map((g) => this.checkAnimations(g, this.instance.dump));
 
     //purge extra material
     this.groups.forEach((g) => delete g.structure);
@@ -6481,7 +6451,9 @@ class SamplerNode {
         }).map((o) => o.data)
       };
       
-      if (countDuplicates(eventObjects[ev].data) > 30) {
+      console.error(eventObjects[ev].data);
+
+      if (countDuplicates(eventObjects[ev].data) > 30) { //if 30 same events were generated
         eventObjects[ev].animation = true;
       }
       
@@ -6491,28 +6463,24 @@ class SamplerNode {
     return eventObjects;
   }
 
-  checkAnimations(group) {
+  checkAnimations(group, log) {
     Object.keys(group.eventObjects).forEach((code) => {
       const eventObject = group.eventObjects[code];
 
       if (!eventObject.animation) return;
       console.warn('Animation detected!');
 
-      let size = 0;
-
       const frames = group.structure.filter((e) => (e.type === code)).map((frame) => {
         const elements = frame.elements;
         return elements.map((u) => {
-          const i = this.instance.dump[u.pos];
-          size += memorySizeOf(i.data);
-
+          const i = log[u.pos];
           return i;
         });
       });
 
       eventObject.animation = frames;
 
-      server.emitt(this.channel, `<|"Info" -> "Animation ${frames.length} frames", "Size" -> ${Math.round(size / 1024)}|>`, 'Progress'); 
+      server.emitt(this.channel, `"Animation ${frames.length} frames detected"`, 'Message'); 
 
       //server.emitt(this.channel, `<|"Bar" -> ${Math.round(0.0)}, "Max" -> 1.0, "Info" -> ${}, "Size" -> ${}|>`, 'Progress'); 
 
@@ -6552,6 +6520,8 @@ class SamplerNode {
     mem();
 
     let list = Object.values(group.eventObjects).filter((o) => (!o.animation));
+
+    //if (list.length == 0) return;
 
     //remove duplicates
     list.forEach((ev) => {
@@ -6657,7 +6627,25 @@ class SamplerNode {
 
     list = Object.values(group.eventObjects).filter((o) => (o.animation));
     if (list.length) {
-      throw list;
+      console.warn(list);
+      
+      console.log('Feed directly');
+
+      for (const event of list) {
+        let state = undefined;
+        let index = 0;
+        server.emitt(this.channel, `<|"Info" -> "Sampling ${event.animation.length} frames", "Max" -> ${event.animation.length}, "Bar" -> ${0}|>`, 'Progress');
+
+        for (const frame of event.animation) {
+          index += 1;
+          server.emitt(this.channel, `<|"Max" -> ${event.animation.length}, "Bar" -> ${index}|>`, 'Progress');
+
+          state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: event.data[0]});
+          frame.forEach((s) => {
+            state.set(s, map);
+          });
+        }
+      }
     }
 
     group.mesh = (new KernelMesh(group, map)).serialize();

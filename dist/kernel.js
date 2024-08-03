@@ -14,7 +14,7 @@ let SamplerNode = false;
 
 core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Init = async (args, env) => {
     const channel = await interpretate(args[0], env);
-    if (!SamplerNode) SamplerNode = (await import('./sampler-f9a6ff5d.js')).SamplerNode;
+    if (!SamplerNode) SamplerNode = (await import('./sampler-f3556a7c.js')).SamplerNode;
     instance.sampler = new SamplerNode(instance, channel);
 
     instance.sampler.emitter = (ev) => {
@@ -90,7 +90,7 @@ core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Inject = async (args, en
         channel: channel
     };
 
-    if (!AnalyzerNode) AnalyzerNode = (await import('./analyzer-9b9ab037.js').then(function (n) { return n.a; })).AnalyzerNode;
+    if (!AnalyzerNode) AnalyzerNode = (await import('./analyzer-4aa51cef.js').then(function (n) { return n.a; })).AnalyzerNode;
 
     let time = performance.now();
     let block = false;

@@ -71,6 +71,10 @@ function filterKeys(object, filterFunction) {
   function findCorrespondences(timeSeries, connections) {
       const correspondences = [];
       const pending = [];
+
+      console.log(timeSeries);
+      console.log(connections);
+
       let i = 0;
   
       while (i < timeSeries.length) {
@@ -83,6 +87,11 @@ function filterKeys(object, filterFunction) {
           if (isNaN(char)) {
             pending.push({type: char, elements: [], pos: i});
           } else {
+            if (pending.length < 1) {
+              i++;
+              continue;
+            }
+
             pending[0].elements.push({data: char, pos: i});
             if (pending[0].elements.length == connections[pending[0].type].length) {
               correspondences.push(pending.shift());

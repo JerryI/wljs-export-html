@@ -242,30 +242,38 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             }   
 
             window.server.kernel.emitt = function(uid, data, type = 'Default') {
-              const message = {type: 'event', uid: uid, pattern: type, data:data};
-              const kernels = window._kernels;
+              setTimeout(() => {
+                const message = {type: 'event', uid: uid, pattern: type, data:data};
+                const kernels = window._kernels;
 
-              for (let i=0; i<kernels.length; ++i) {
-                if (!kernels[i].test(message)) continue;
+                for (let i=0; i<kernels.length; ++i) {
+                  if (!kernels[i].test(message)) continue;
 
-                if (!kernels[i].state) {
-                  kernels[i].state = new KernelState(undefined, message);
-                } else {
-                  kernels[i].state = new KernelState(kernels[i].state, message);
-                }
-
-                kernels[i].state.exec(kernels[i].database, (fn) => {
-                  for (const f of Object.keys(fn)) {
-                    if (fn[f].set.length === 1) {       
-                      core.WLJSIOUpdateSymbol(["'"+f+"'", fn[f].set[0]], {global: {}});
-                    } else {
-                      fn[f].i += 1;
-                      if (fn[f].i >= fn[f].set.length) fn[f].i = 0;
-                      core.WLJSIOUpdateSymbol(["'"+f+"'", fn[f].set[fn[f].i]], {global: {}});
-                    }
+                  if (!kernels[i].state) {
+                    kernels[i].state = new KernelState(undefined, message);
+                  } else {
+                    kernels[i].state = new KernelState(kernels[i].state, message);
                   }
-                });
-              }
+
+                  kernels[i].state.exec(kernels[i].database, (fn) => {
+                    for (const f of Object.keys(fn)) {
+                      if (fn[f].set.length === 1) {       
+                        core[f].data = fn[f].set[0];
+                        for (const inst of Object.values(core[f].instances)) {
+                          inst.update();
+                        };
+                      } else {
+                        fn[f].i += 1;
+                        if (fn[f].i >= fn[f].set.length) fn[f].i = 0;
+                        core[f].data = fn[f].set[fn[f].i];
+                        for (const inst of Object.values(core[f].instances)) {
+                          inst.update();
+                        };
+                      }
+                    }
+                  });
+                }
+              }, 2);
             }            
           </script>   
           <script type="module">
