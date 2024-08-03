@@ -1,5 +1,5 @@
 LeftElement[OptionsPattern[]] := With[{cell = OptionValue["Cell"], Class = If[TrueQ[OptionValue["Cell"]["Props"]["Hidden"]], "rotate-90", ""]}, 
-    <div class="grow-0 self-end pr-1 mb-1 group-hover:opacity-100 opacity-0 hidden md:block">
+    <div class="grow-0 self-end pr-1 mb-1 group-hover:opacity-100 opacity-0 hidden">
         <button class="button-chide {Class}">
             <svg class="text-gray-500 h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
@@ -9,7 +9,7 @@ LeftElement[OptionsPattern[]] := With[{cell = OptionValue["Cell"], Class = If[Tr
 ]
 
 RightElement[OptionsPattern[]] := With[{cell = OptionValue["Cell"], Uid = OptionValue["Cell"]["Hash"]}, 
-    <div class="relative grow-0 self-start pl-1 mt-1 group-hover:opacity-100 opacity-0 hidden md:block">
+    <div class="relative grow-0 self-start pl-1 mt-1 group-hover:opacity-100 opacity-0 hidden">
         <button class="button-cmore">
             <svg class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" >
                 <circle cx="18" cy="12" r="1.5" transform="rotate(90 18 12)" fill="currentColor"/>

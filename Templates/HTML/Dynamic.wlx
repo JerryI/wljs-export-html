@@ -220,16 +220,17 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
               }
             </style>
         </head>  
-        <body class="h-full dark:bg-gray-700 bg-white"> 
+        <body class="h-full dark:bg-black bg-white"> 
           <div>
-            <div class="pl-2" id="frame" style="
+            <div class="px-2" id="frame" style="
               width: 80%;
+              height: 100%;
               margin-left: auto;
               margin-right: auto;
             ">
               <div class="h-full flex flex-col">
                 <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
-                    <CellsContainer Notebook={notebook}></CellsContainer>
+                    <CellsContainer Notebook={notebook} Meta={"Dynamic web notebook"}></CellsContainer>
                 </main>
               </div>
             </div>
