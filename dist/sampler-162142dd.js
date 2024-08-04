@@ -1,39 +1,62 @@
-import { findPositions, filterKeys } from "./findpositions";
-import { eventNameToString, KernelMesh } from "./mesh";
+import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-4aa51cef.js';
 
-import { AnalyzerNode } from './analyzer.js';
+const sdbm = str => {
+  let arr = str.split('');
+  return arr.reduce(
+    (hashCode, currentVal) =>
+      (hashCode =
+        currentVal.charCodeAt(0) +
+        (hashCode << 6) +
+        (hashCode << 16) -
+        hashCode),
+    0
+  );
+};
 
-import { KernelState } from "./state.js";
+const simpleHash = str => {
+  return sdbm(str)
+};
 
-function memorySizeOf(obj) {
-  var bytes = 0;
-
-  function sizeOf(obj) {
-    if (obj !== null && obj !== undefined) {
-      switch (typeof obj) {
-        case "number":
-          bytes += 8;
-          break;
-        case "string":
-          bytes += obj.length * 2;
-          break;
-        case "boolean":
-          bytes += 4;
-          break;
-        case "object":
-          var objClass = Object.prototype.toString.call(obj).slice(8, -1);
-          if (objClass === "Object" || objClass === "Array") {
-            for (var key in obj) {
-              if (!obj.hasOwnProperty(key)) continue;
-              sizeOf(obj[key]);
-            }
-          } else bytes += obj.toString().length * 2;
-          break;
-      }
-    }
-    return bytes;
+class KernelState {
+  state = {}
+  hash = ''
+  
+  constructor (state = undefined, ev) {
+    if (state) this.state = {...state.state};
+    const code = simpleHash(String(ev.uid) + String(ev.pattern));
+    this.state[code] = ev.data;
+    const self = this;
+    this.hash = Object.keys(this.state).reduce((acc, e) => {
+      const h = simpleHash('dt'+String(self.state[e])) + simpleHash('st'+String(e));
+      return acc + h;
+    }, 0);
+    return this;
   }
-  return sizeOf(obj);
+  
+  set (o, m) {
+    const h = String(this.hash);
+    if (!m.has(h)) m.set(h, {});
+    const object = m.get(h);
+    object.state = {...this.state};//debug only
+    if (o.name in object) {
+      object[o.name].set.push(o.data);
+    } else {
+      object[o.name] = {i:0, set:[o.data]}; 
+    }
+  }
+  
+  exec (m, fn) {
+    const h = String(this.hash);
+    console.log(this.state);
+      console.log(this.hash);
+    if (!m.has(h)) {
+      console.log('State does not exists!');
+      
+      return false;
+    }
+    
+    fn(m.get(h));
+  }
 }
 
 function removeDuplicates(arr) {
@@ -59,12 +82,12 @@ function countDuplicates(arr) {
   return duplicateCount;
 }
 
-let mem = () => 0
+let mem = () => 0;
 
 if (performance.memory)
-  mem = () => performance.memory.totalJSHeapSize/1024.0
+  mem = () => performance.memory.totalJSHeapSize/1024.0;
 
-export class SamplerNode {
+class SamplerNode {
   que = {}
   aborted = false
 
@@ -143,8 +166,6 @@ export class SamplerNode {
       if (!eventObject.animation) return;
       console.warn('Animation detected!');
 
-      let size = 0;
-
       const frames = group.structure.filter((e) => (e.type === code)).map((frame) => {
         const elements = frame.elements;
         return elements.map((u) => {
@@ -174,7 +195,7 @@ export class SamplerNode {
       await this.sample(group);
     }
 
-    const totalSize = this.groups.reduce((acc, curr) => acc + (curr.mesh.length *2), 0)
+    const totalSize = this.groups.reduce((acc, curr) => acc + (curr.mesh.length *2), 0);
     console.warn('Finished!');
     server.emitt(this.channel, `<|"Info" -> "Finished!", "Size" -> ${totalSize / 1024}, "Max" -> 1.0, "Bar" -> 1.0|>`, 'Progress'); 
     server.emitt(this.channel, 'True', 'Done'); 
@@ -192,7 +213,7 @@ export class SamplerNode {
     let individualPoints = [];
     const map = new Map();
 
-    const mem_before = mem();
+    mem();
 
     let list = Object.values(group.eventObjects).filter((o) => (!o.animation));
 
@@ -221,11 +242,8 @@ export class SamplerNode {
       if (this.aborted) return;
 
       //reset
-      let state;
-
       for (const ev of list) {
         await this._singleStep(ev, ev.data[0]);
-        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
         if (this.aborted) return;
       }
 
@@ -234,7 +252,7 @@ export class SamplerNode {
 
       
 
-      
+      let state;
 
       let index = 0;
       for (const d of event.data) {
@@ -250,30 +268,21 @@ export class SamplerNode {
 
       if (this.aborted) return;
       
-    };
-
+    }
     if (list.length > 1) {
 
       if (this.aborted) return;
       console.warn('Go reqursively!');
       console.warn('Reset to initial state!');
-      let index = 0;
       //let state = new KernelState();
 
       //reset
-      let state;
-
       for (const ev of list) {
         await this._singleStep(ev, ev.data[0]);
-        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
         if (this.aborted) return;
       }
 
-      map.set('initialization', list.map((ev) => {
-        return {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]}
-      }));
-
-      
+      let state;
 
       if (this.aborted) return;
 
@@ -367,8 +376,4 @@ export class SamplerNode {
 
 }
 
-  
-
-  
-  
-  
+export { SamplerNode };
