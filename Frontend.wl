@@ -21,6 +21,7 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 
 {loadSettings, storeSettings}        = ImportComponent["Frontend/Settings.wl"];
 
+
 settings = <||>;
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Static.wlx"}] ];
@@ -340,7 +341,12 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         }, 
             EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures"}|>];
             Then[p, Function[choise,
-                {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
+                With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
+                    Then[tt, Function[Null,
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                    ] ] 
+                ];
             ] ];
         ]
     ]

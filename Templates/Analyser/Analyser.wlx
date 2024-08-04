@@ -34,13 +34,17 @@ Component[OptionsPattern[]] := With[{
     cli = OptionValue["Client"]
 },
 
-EventHandler[sniffer, {
+EventHandler[EventClone[sniffer], {
     "Stat" -> Function[encoded,
         EventFire[controller, "Load", <|"Client" -> cli, "Data" -> ImportString[URLDecode[encoded], "RawJSON"] |> ];
     ],
 
     "Message" -> Function[body,
         EventFire[controller2, "Message", <|"Client" -> cli, "Message" -> body|>]
+    ],
+
+    "Continue" -> Function[Null,
+        EventFire[controller2, "RemoveButton", <|"Client" -> cli|>]
     ]
 }];
 
@@ -81,6 +85,10 @@ EventHandler[sniffer, {
 		    const message = await interpretate(assoc.Message, {});
 		    doc.innerText = message;
 	    });
+
+        this.on('RemoveButton', () => {
+            document.getElementById('abba-continue').remove();
+        });
     </WebUIJSBind>
     <WebUIEventListener Id={"abba-continue"} Event={sniffer} Pattern={"Continue"} />
     <WebUIEventListener Id={"abba-abort"} Event={sniffer} Pattern={"Abort"} />

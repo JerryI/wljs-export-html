@@ -4,7 +4,7 @@ Component[OptionsPattern[]] := With[{
     cli = OptionValue["Client"]
 },
 
-EventHandler[controller, {
+EventHandler[EventClone[controller], {
     "Progress" -> Function[body,
         EventFire[controller2, "Progress", <|"Client" -> cli, "Message" -> body|>]
     ],
@@ -15,6 +15,10 @@ EventHandler[controller, {
 
     "Done" -> Function[body,
         EventFire[controller2, "Done", <|"Client" -> cli|>]
+    ],
+
+    "Continue" -> Function[Null,
+        EventFire[controller2, "RemoveButton", <|"Client" -> cli|>]
     ]
 }];
 
@@ -62,6 +66,9 @@ EventHandler[controller, {
             //messgae.Max
             //message.Info
 	    });
+        this.on('RemoveButton', () => {
+            document.getElementById('sbba-continue').remove();
+        });
     </WebUIJSBind>
     <WebUIEventListener Id={"sbba-abort"} Event={controller} Pattern={"Abort"} />
     <WebUIEventListener Id={"sbba-continue"} Event={controller} Pattern={"Continue"} />
