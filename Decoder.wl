@@ -10,9 +10,13 @@ BeginPackage["Notebook`Editor`ExportDecoder`", {
 
 Begin["`Internal`"];
 
-System`RowBoxFlatten;
+System`RowBoxFlatten; (* needed to fix Kernel and Master definitions *)
 
 {saveNotebook, loadNotebook, renameNotebook, cloneNotebook}         = ImportComponent["Frontend/Loader.wl"];
+
+(*                                             ***                                                 *)
+(*                                         HTML Converter                                          *)
+(*                                             ***                                                 *)
 
 check[path_String] := Module[{str, result},
     Echo["Notebook`Editor`ExportHTML`Decoder` >> checking encoding"];
@@ -81,6 +85,10 @@ With[{
 ] ]
 
 Options[decodeHTML] = {"Messager"->"", "Client"->Null}
+
+(*                                             ***                                                 *)
+(*                                       Markdown Converter                                        *)
+(*                                             ***                                                 *)
 
 lang["mathematica"] := ""
 lang["wolfram"] := ""
@@ -169,6 +177,10 @@ With[{
 ] ]
 
 Options[decodeMD] = {"Messager"->"", "Client"->Null}
+
+(*                                             ***                                                 *)
+(*                                   Mathematica NB Converter                                      *)
+(*                                             ***                                                 *)
 
 processString[str_String] := StringReplace[ExportString[str, "String"], "\\[NoBreak]"->""]
 

@@ -151,6 +151,11 @@ input::selection {
   z-index:110;
 }
 
+.dark\:bg-black {
+  --tw-bg-opacity: 1;
+  background-color: #222;
+}
+
 .hover\:bg-gray-100:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(243 244 246 / var(--tw-bg-opacity)) /* #f3f4f6 */;

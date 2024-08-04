@@ -3,11 +3,7 @@ CellFrame      := ImportComponent["Components/CellFrame.wlx"];
 Children       := ImportComponent["Components/Children.wlx"];
 CellsSubgroup  := ImportComponent["Components/CellSubgroup.wlx"];
 
-Border          = ImportComponent["Components/Border.wlx"];
-
 CellWrapper    := ImportComponent["Components/CellWrapper.wlx"];
-
-{ControlsLeft, ControlsRight, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
 
 Component[cell_CellObj, cli_, parameters_, OptionsPattern[]] := With[{
     ExtensionTemplateInjection = OptionValue["ExtensionTemplateInjection"], 

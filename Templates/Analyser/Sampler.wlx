@@ -1,0 +1,73 @@
+Component[OptionsPattern[]] := With[{
+    controller = OptionValue["Channel"],
+    controller2 = CreateUUID[],
+    cli = OptionValue["Client"]
+},
+
+EventHandler[controller, {
+    "Progress" -> Function[body,
+        EventFire[controller2, "Progress", <|"Client" -> cli, "Message" -> body|>]
+    ],
+
+    "Message" -> Function[body,
+        EventFire[controller2, "Message", <|"Client" -> cli, "Message" -> body|>]
+    ],
+
+    "Done" -> Function[body,
+        EventFire[controller2, "Done", <|"Client" -> cli|>]
+    ]
+}];
+
+<div style="display: table-caption;">
+    <p class="text-sm leading-4 py-1 mt-1 text-gray-600 dark:text-gray-400">Please, wait.</p>
+    <span class="text-sm uppercase text-gray-500">Progress</span>
+    <div class="inline-block min-w-full py-2 align-middle">
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded p-1"><div id="sbba-bar" class="bg-teal-400 w-full h-3 rounded"></div></div>
+        <span class="text-sm leading-4 text-gray-400" id="sbba-info"></span>
+        <p class="text-sm leading-4 py-1 mt-1 text-gray-600 dark:text-gray-400"><span id="sbba-size">0</span> kB</p>
+    </div>
+    <div class="py-1">
+        <span class="text-red-400" id="sbba-msg"></span>
+    </div>
+    <div class="flex flex-row">
+        <button id="sbba-continue" class="hidden mr-auto cursor-click rounded-md 0 h-7 px-2 text-left text-gray-500  ring-1 ring-inset ring-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 sm:text-xs sm:leading-6 bg-d9 dark:bg-gray-700 dark:ring-gray-500">Continue</button>
+        <button id="sbba-abort" class="cursor-click rounded-md 0 h-7 px-2 text-left text-gray-500   ring-inset ring-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 sm:text-xs sm:leading-6 bg-d9 dark:bg-gray-700 dark:ring-gray-500">Abort</button>
+    </div>
+    <WebUIJSBind Event={controller2}>
+	    //will be executed once
+	    const doc = document.getElementById('sbba-msg');
+        const bar = document.getElementById('sbba-bar');
+        const size = document.getElementById('sbba-size');
+        const info = document.getElementById('sbba-info');
+
+        const cbutton = document.getElementById("sbba-continue");
+	
+	    //binding to event patterns
+        this.on('Done', () => {
+            cbutton.classList.remove('hidden');
+        });
+
+	    this.on('Message', async (data) => {
+		    const assoc = await interpretate(data, {hold:true});
+		    const message = await interpretate(assoc.Message, {});
+		    doc.innerText = message;
+	    });
+        this.on('Progress', async (data) => {
+		    const assoc = await interpretate(data, {hold:true});
+		    const message = await interpretate(assoc.Message, {});
+		    
+            if (message.Size) size.innerText = Math.round(message.Size);
+            if (message.Bar) bar.style.width =  Math.round((message.Bar / message.Max) * 100) + '%';
+            if (message.Info) info.innerText = message.Info;
+            //messgae.Max
+            //message.Info
+	    });
+    </WebUIJSBind>
+    <WebUIEventListener Id={"sbba-abort"} Event={controller} Pattern={"Abort"} />
+    <WebUIEventListener Id={"sbba-continue"} Event={controller} Pattern={"Continue"} />
+</div>
+]
+
+Options[Component] = {"Notebook"->"", "Channel" -> "", "Client" -> "", "Log" -> ""}
+
+Component

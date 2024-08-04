@@ -1,8 +1,6 @@
 CellsContainer := ImportComponent["Components/CellsContainer.wlx"];
 {CellGenerator, CellGeneratorScript}   = ImportComponent["CellGenerator.wlx"];
 
-{ControlsL, ControlsR, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
-
 {loadSettings, storeSettings}        = ImportComponent["Frontend/Settings.wl"];
 
 settings = <||>;
@@ -104,7 +102,14 @@ imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
 
 cellProcess[any_, _, _, _, _] := any
 
-cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"Data" -> 
+cellPreProcess[cell_] := cell
+
+cellProcess[data_, "Input", _, _, _] := Join[data, <|"Data" -> "", "Display"->"none"|>]
+cellProcess[data_, "Output", _, _, _] := Join[data, <|"Invisible"->True|>]
+
+cellProcess[data_, "Output", "markdown", notebook_, settings_] := data
+
+cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -112,7 +117,7 @@ cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"
         RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
-      
+
         RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
@@ -121,8 +126,7 @@ cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"
   ]
 |>]
 
-
-cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Data" -> 
+cellProcess[data_, "Output", "slides", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -144,7 +148,7 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
               With[{serialized = CellObj`Serialize[cell](*`*)},
-                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cell, Null, <||>]|>
+                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cellPreProcess[cell], Null, <||>]|>
               ]
           ]
       ]   
@@ -172,8 +176,8 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 
     loadSettings[settings];
 
-    { "<!DOCTYPE html>", 
-    <html class="h-full" os="Browser"> 
+  { "<!DOCTYPE html>",  
+    <html class="print-pdf" os="Browser"> 
         <head>
             <meta charset="UTF-8"/>
             <meta serializer="hsfn-4"/>
@@ -191,35 +195,34 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
-            <style>
-              .cwrapper {
-                padding-top: 0.25rem;
-                padding-bottom: 0.25rem;
-              }
-            </style>
         </head>  
-        <body class="h-full dark:bg-gray-700 bg-white"> 
+        <body class=" dark:bg-gray-700 bg-white"> 
           <div>
-            <div class="pl-2" id="frame" style="
-              width: 80%;
-              margin-left: auto;
-              margin-right: auto;
-            ">
-              <div class="h-full flex flex-col">
-                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
+            <div id="frame">
+              <div>
+                <main class="dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 rounded-lg bg-white shadow">
                     <CellsContainer Notebook={notebook}></CellsContainer>
                 </main>
               </div>
             </div>
           </div>   
           <script type="module">
+            const url = new URL(window.location.href);
+            url.searchParams.set('print-pdf', '');
+            window.history.replaceState(null, null, url); // or pushState
+
             window.server = {
               emitt: () => {}
             }   
+            class emptyClass {
+                constructor () {
+                    
+                }
+            }
+              window.SupportedCells['none'] = {
+                view: emptyClass
+              };
           </script>   
-          <script type="module">
-            <ControlsScript/>   
-          </script> 
           <script type="module">
             const jsonstorage = document.getElementById('json-symbols');
             const store = JSON.parse(jsonstorage.innerText)["storage"];

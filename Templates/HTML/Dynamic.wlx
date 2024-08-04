@@ -1,5 +1,5 @@
-CellsContainer := ImportComponent["Components/CellsContainerSlide.wlx"];
-{CellGenerator, CellGeneratorScript}   = ImportComponent["CellGeneratorSlides.wlx"];
+CellsContainer := ImportComponent["Components/CellsContainer.wlx"];
+{CellGenerator, CellGeneratorScript}   = ImportComponent["CellGenerator.wlx"];
 
 {ControlsL, ControlsR, ControlsScript}            = ImportComponent["Components/Controls.wlx"];
 
@@ -104,14 +104,7 @@ imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
 
 cellProcess[any_, _, _, _, _] := any
 
-cellPreProcess[cell_] := cell
-
-cellProcess[data_, "Input", _, _, _] := Join[data, <|"Data" -> "", "Display"->"none"|>]
-cellProcess[data_, "Output", _, _, _] := Join[data, <|"Invisible"->True|>]
-
-cellProcess[data_, "Output", "markdown", notebook_, settings_] := data
-
-cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
+cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -119,7 +112,7 @@ cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Dis
         RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
-
+      
         RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
@@ -128,7 +121,8 @@ cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Dis
   ]
 |>]
 
-cellProcess[data_, "Output", "slides", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
+
+cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -150,7 +144,7 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
               With[{serialized = CellObj`Serialize[cell](*`*)},
-                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cellPreProcess[cell], Null, <||>]|>
+                <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cell, Null, <||>]|>
               ]
           ]
       ]   
@@ -169,17 +163,39 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   ]
 ];
 
+KernelScripts[OptionsPattern[]] := With[{Payload = ExportString[OptionValue["Compressed"], "JSON"], ZIPModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "zip.js"}], "Text"], JSModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "decoder.js"}], "Text"]},
+  {
+    <script type="module">
+      <JSModule/>
+    </script>
+  ,    
+    <script type="module">
+      <ZIPModule/>
+    </script>
+  ,
+    <script type="module">
+      let mesh = <Payload/>;
+      mesh = mesh.map((m) => interpretate.unzlib64String(m));
+      window._kernels = mesh.map(KernelMesh.unpack);
+    </script>
+  } // StringRiffle
+]
+
+Options[KernelScripts] = {"Root"->"", "Compressed" -> {}}
+
 Component[OptionsPattern[]] := Module[{settings}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
+  root = OptionValue["Root"],
+  compressed = OptionValue["Compressed"],
   RootStyles = ProduceStyles[OptionValue["Root"]],
   nid = OptionValue["Notebook"]["Hash"]
 },
 
     loadSettings[settings];
 
-  { "<!DOCTYPE html>",  
-    <html class="print-pdf" os="Browser"> 
+    { "<!DOCTYPE html>", 
+    <html class="h-full" os="Browser"> 
         <head>
             <meta charset="UTF-8"/>
             <meta serializer="hsfn-4"/>
@@ -197,34 +213,73 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
+            <style>
+              .cwrapper {
+                padding-top: 0.25rem;
+                padding-bottom: 0.25rem;
+              }
+            </style>
         </head>  
-        <body class=" dark:bg-gray-700 bg-white"> 
+        <body class="h-full dark:bg-black bg-white"> 
           <div>
-            <div id="frame">
-              <div>
-                <main class="dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 rounded-lg bg-white shadow">
-                    <CellsContainer Notebook={notebook}></CellsContainer>
+            <div class="px-2" id="frame" style="
+              width: 80%;
+              height: 100%;
+              margin-left: auto;
+              margin-right: auto;
+            ">
+              <div class="h-full flex flex-col">
+                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
+                    <CellsContainer Notebook={notebook} Meta={"Dynamic web notebook"}></CellsContainer>
                 </main>
               </div>
             </div>
-          </div>   
+          </div> 
+          <KernelScripts Root={root} Notebook={notebook} Compressed={compressed}/>  
           <script type="module">
-            const url = new URL(window.location.href);
-            url.searchParams.set('print-pdf', '');
-            window.history.replaceState(null, null, url); // or pushState
-
             window.server = {
-              emitt: () => {}
+              emitt: () => {},
+              kernel: {}
             }   
-            class emptyClass {
-                constructor () {
-                    
+
+            window.server.kernel.emitt = function(uid, data, type = 'Default') {
+              setTimeout(() => {
+                const message = {type: 'event', uid: uid, pattern: type, data:data};
+                const kernels = window._kernels;
+
+                for (let i=0; i<kernels.length; ++i) {
+                  if (!kernels[i].test(message)) continue;
+
+                  if (!kernels[i].state) {
+                    kernels[i].state = new KernelState(undefined, message);
+                  } else {
+                    kernels[i].state = new KernelState(kernels[i].state, message);
+                  }
+
+                  kernels[i].state.exec(kernels[i].database, (fn) => {
+                    for (const f of Object.keys(fn)) {
+                      if (fn[f].set.length === 1) {       
+                        core[f].data = fn[f].set[0];
+                        for (const inst of Object.values(core[f].instances)) {
+                          inst.update();
+                        };
+                      } else {
+                        fn[f].i += 1;
+                        if (fn[f].i >= fn[f].set.length) fn[f].i = 0;
+                        core[f].data = fn[f].set[fn[f].i];
+                        for (const inst of Object.values(core[f].instances)) {
+                          inst.update();
+                        };
+                      }
+                    }
+                  });
                 }
-            }
-              window.SupportedCells['none'] = {
-                view: emptyClass
-              };
+              }, 2);
+            }            
           </script>   
+          <script type="module">
+            <ControlsScript />   
+          </script> 
           <script type="module">
             const jsonstorage = document.getElementById('json-symbols');
             const store = JSON.parse(jsonstorage.innerText)["storage"];
@@ -233,9 +288,27 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
               const assoc = await interpretate(store, {hold:true});
 
               Object.keys(assoc).forEach(element => {
+
                 core[element] = async (args, env) => {
-                  return await interpretate(core[element].data, env)
+                  console.log('IE: calling our symbol...');
+                  if (env.root && !env.novirtual) core[element].instances[env.root.uid] = env.root;
+                  const data = await interpretate(core[element].data, env);
+                  return data;
                 };
+              
+                core[element].update = async (args, env) => {
+                  const data = await interpretate(core[element].data, env);
+                  //if (env.hold) return ['JSObject', data];
+                  return data;
+                }  
+              
+                core[element].destroy = async (args, env) => {
+                  delete core[name].instances[env.root.uid];
+                  console.warn('external symbol was destoryed');
+                }                 
+
+                core[element].virtual = true;
+                core[element].instances = {};
 
                 core[element].data = assoc[element];
               });
@@ -283,6 +356,6 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
   } // StringRiffle
 ]]
 
-Options[Component] = {"Title" -> "Example", "Notebook"->""}
+Options[Component] = {"Title" -> "Example", "Notebook"->"", "Compressed"->{}}
 
 Component
