@@ -251,8 +251,8 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
                   if (!kernels[i].test(message)) continue;
 
                   if (!kernels[i].state) {
-                    if (kernels[i].database.has('initialization')) {
-                      const init = kernels[i].database.get('initialization');
+                    if (kernels[i].database.has('$initialization')) {
+                      const init = kernels[i].database.get('$initialization');
                       init.forEach((ie) => kernels[i].state = new KernelState(kernels[i].state, ie, true));
                     } 
                     
@@ -264,6 +264,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 
                   kernels[i].state.exec(kernels[i].database, (fn) => {
                     for (const f of Object.keys(fn)) {
+                      if (f === '$state') continue;
 
                       if (fn[f].set.length === 1) {       
                         core[f].data = fn[f].set[0];

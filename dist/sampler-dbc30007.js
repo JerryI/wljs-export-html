@@ -46,8 +46,16 @@ class KernelState {
 
     return this;
   }
+
+  match(state) {
+    for (const prop of Object.keys(this.state)) {
+      if (state[prop] != this.state[prop]) return false;
+    }
+
+    return true;
+  }
   
-  set (o, m) {
+  set (o, m, opts = {}) {
     let found = false;
 
     for (const h of this.hash) {
@@ -58,16 +66,46 @@ class KernelState {
       
     }
 
+    let object;
+
     if (!found) {
+      object = {$state: this.state};
       found = this.hash[0];
-      m.set(found, {});
+      m.set(found, object);
       for (let k = 1; k<this.hash.length; ++k) {
-        m.set(this.hash[k], {fwd: found});
+        if (m.has(this.hash[k])) {
+          console.error('COLLISION!');
+          console.warn(m.get(this.state));
+          const fwd = m.get(this.hash[k]);
+          console.warn(fwd);
+          if (!fwd.$collided) fwd.$collided = [];
+          const extra = {};
+          fwd.$collided.push(extra);
+          extra.$state = this.state;
+          extra.fwd = found;
+          continue;
+        }
+        m.set(this.hash[k], {fwd: found, $state: this.state});
+      }
+    } else {
+      object = m.get(found);
+      if (!this.match(object.$state)) {
+        console.warn('Collision!');
+        if (!object.$collided) object.$collided = [];
+        const extra = {};
+        object.$collided.push(extra);
+        extra.$state = this.state;
+        object = extra;
       }
     }
     
-    const object = m.get(found);
+
     //object.state = {...this.state};//debug only
+    if (opts.noduplicates) {
+      object[o.name] = {set:[o.data], i:0};
+      return this;
+    }
+
     if (o.name in object) {
       object[o.name].set.push(o.data);
     } else {
@@ -78,11 +116,22 @@ class KernelState {
   exec (m, fn) {
     let h = this.hash[0];
     while(m.has(h)) {
-      const o = m.get(h);
+      let o = m.get(h);
+
+      if (!this.match(o.$state)) {
+        console.warn('COLLISION!');
+        console.warn(o);
+        console.warn(this);
+        o = object.$collided.find((el) => this.match(el.$state));
+      }
+
       if (o.fwd) {
         h = o.fwd;
         continue;
       }
+
+      //console.warn(this.state);
+      //console.warn(o);
 
       return fn(o)
     }
@@ -263,60 +312,31 @@ class SamplerNode {
       individualPoints.push(e.data.length);
     });
 
-    server.emitt(this.channel, `<|"Info" -> "Sampling ${totalPoints} points", "Max" -> ${totalPoints}, "Bar" -> 0.0|>`, 'Progress'); 
+    
+    
 
-
-    //singles considering undefined initial state
-    //reset all to possible initial state
-
-    for (const event of list) {
-      console.warn('Reset to initial state!');
-      //let state = new KernelState();
-
-      if (this.aborted) return;
-
-      //reset
-      for (const ev of list) {
-        await this._singleStep(ev, ev.data[0]);
-        if (this.aborted) return;
-      }
-
-      console.warn('reseted succesfully');
-      console.warn('starting sampling process');
-
-      
-
-      let state;
-
-      let index = 0;
-      for (const d of event.data) {
-        index += 1;
-        if (this.aborted) return;
-        server.emitt(this.channel, `<|"Info" -> "Sampling ${event.data.length} points", "Max" -> ${event.data.length}, "Bar" -> ${index}|>`, 'Progress');
-        state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: d});
-        const symbolData = await this._singleStep(event, d);
-        symbolData.forEach((s) => {
-          state.set(s, map);
-        });
-      }
-
-      if (this.aborted) return;
-      
-    }
     if (list.length > 1) {
 
+      console.warn('Mutlip');
       if (this.aborted) return;
       console.warn('Go reqursively!');
       console.warn('Reset to initial state!');
       //let state = new KernelState();
 
       //reset
+      let state;
+
       for (const ev of list) {
         await this._singleStep(ev, ev.data[0]);
+        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
         if (this.aborted) return;
       }
 
-      let state;
+      map.set('$initialization', list.map((ev) => {
+        return {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]}
+      }));
+
+      
 
       if (this.aborted) return;
 
@@ -330,7 +350,7 @@ class SamplerNode {
           progress();
 
           symbolData.forEach((s) => {
-            state.set(s, map);
+            state.set(s, map, {noduplicates: true});
           });
 
           if (this.aborted) return;
@@ -350,7 +370,50 @@ class SamplerNode {
       if (this.aborted) return;
 
       
-    }
+    } else {
+      //singles considering undefined initial state
+    //reset all to possible initial state
+      console.warn('SINGLE');
+      server.emitt(this.channel, `<|"Info" -> "Sampling ${totalPoints} points", "Max" -> ${totalPoints}, "Bar" -> 0.0|>`, 'Progress'); 
+      console.warn(list);
+
+    for (const event of list) {
+      console.warn('Reset to initial state!');
+      //let state = new KernelState();
+
+      if (this.aborted) return;
+
+      //reset
+      let state;
+
+      for (const ev of list) {
+        await this._singleStep(ev, ev.data[0]);
+        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
+        if (this.aborted) return;
+      }
+
+      console.warn('reseted succesfully');
+      console.warn('starting sampling process');
+
+      
+
+      
+
+      let index = 0;
+      for (const d of event.data) {
+        index += 1;
+        if (this.aborted) return;
+        server.emitt(this.channel, `<|"Info" -> "Sampling ${event.data.length} points", "Max" -> ${event.data.length}, "Bar" -> ${index}|>`, 'Progress');
+        state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: d});
+        const symbolData = await this._singleStep(event, d);
+        symbolData.forEach((s) => {
+          state.set(s, map);
+        });
+      }
+
+      if (this.aborted) return;
+      
+    }    }
 
     console.warn('Checking animations');
     if (this.aborted) return;

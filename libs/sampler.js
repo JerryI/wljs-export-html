@@ -208,11 +208,71 @@ export class SamplerNode {
       individualPoints.push(e.data.length);
     });
 
-    server.emitt(this.channel, `<|"Info" -> "Sampling ${totalPoints} points", "Max" -> ${totalPoints}, "Bar" -> 0.0|>`, 'Progress'); 
+    
+    
 
+    if (list.length > 1) {
 
-    //singles considering undefined initial state
+      console.warn('Mutlip');
+      if (this.aborted) return;
+      console.warn('Go reqursively!');
+      console.warn('Reset to initial state!');
+      let index = 0;
+      //let state = new KernelState();
+
+      //reset
+      let state;
+
+      for (const ev of list) {
+        await this._singleStep(ev, ev.data[0]);
+        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
+        if (this.aborted) return;
+      }
+
+      map.set('$initialization', list.map((ev) => {
+        return {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]}
+      }));
+
+      
+
+      if (this.aborted) return;
+
+      const requr = async (depth = 0, state, progress) => {
+        if (depth >= list.length) return;
+
+        const event = list[depth];
+        for (const d of event.data) {
+          state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: d});
+          const symbolData = await this._singleStep(event, d);
+          progress();
+
+          symbolData.forEach((s) => {
+            state.set(s, map, {noduplicates: true});
+          });
+
+          if (this.aborted) return;
+          await requr(depth + 1, state, progress);
+        }
+      };
+
+      let progress = 0;
+      let max = totalPoints + individualPoints.reduce((acc, current) => acc + current);
+
+      await requr(0, state, () => {
+        progress = progress + 1;
+        if (this.aborted) return;
+        server.emitt(this.channel, `<|"Info" -> "Sampling recursively ${max} points", "Max" -> ${max}, "Bar" -> ${progress}|>`, 'Progress');
+      });
+
+      if (this.aborted) return;
+
+      
+    } else {
+      //singles considering undefined initial state
     //reset all to possible initial state
+      console.warn('SINGLE');
+      server.emitt(this.channel, `<|"Info" -> "Sampling ${totalPoints} points", "Max" -> ${totalPoints}, "Bar" -> 0.0|>`, 'Progress'); 
+      console.warn(list);
 
     for (const event of list) {
       console.warn('Reset to initial state!');
@@ -251,62 +311,6 @@ export class SamplerNode {
       if (this.aborted) return;
       
     };
-
-    if (list.length > 1) {
-
-      if (this.aborted) return;
-      console.warn('Go reqursively!');
-      console.warn('Reset to initial state!');
-      let index = 0;
-      //let state = new KernelState();
-
-      //reset
-      let state;
-
-      for (const ev of list) {
-        await this._singleStep(ev, ev.data[0]);
-        state = new KernelState(state, {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]});
-        if (this.aborted) return;
-      }
-
-      map.set('initialization', list.map((ev) => {
-        return {uid: ev.uid, pattern: ev.pattern, data: ev.data[0]}
-      }));
-
-      
-
-      if (this.aborted) return;
-
-      const requr = async (depth = 0, state, progress) => {
-        if (depth >= list.length) return;
-
-        const event = list[depth];
-        for (const d of event.data) {
-          state = new KernelState(state, {uid: event.uid, pattern: event.pattern, data: d});
-          const symbolData = await this._singleStep(event, d);
-          progress();
-
-          symbolData.forEach((s) => {
-            state.set(s, map);
-          });
-
-          if (this.aborted) return;
-          await requr(depth + 1, state, progress);
-        }
-      };
-
-      let progress = 0;
-      let max = totalPoints + individualPoints.reduce((acc, current) => acc + current);
-
-      await requr(0, state, () => {
-        progress = progress + 1;
-        if (this.aborted) return;
-        server.emitt(this.channel, `<|"Info" -> "Sampling recursively ${max} points", "Max" -> ${max}, "Bar" -> ${progress}|>`, 'Progress');
-      });
-
-      if (this.aborted) return;
-
-      
     }
 
     console.warn('Checking animations');
