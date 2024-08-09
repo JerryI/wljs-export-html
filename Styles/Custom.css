@@ -174,3 +174,13 @@ input::selection {
   --tw-bg-opacity: 1;
   background-color: rgb(243 244 246 / var(--tw-bg-opacity)) /* #f3f4f6 */;
 }
+
+#frame {
+  width:80%;    
+}
+
+@media (max-width: 1250px) {
+  #frame {
+  width:98%;    
+  }
+}

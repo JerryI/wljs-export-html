@@ -186,6 +186,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <meta serializer="hsfn-extras"/>
             <ExportSymbols Notebook={notebook}/>
             <meta serializer="end-extras"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
             <RootStyles/>  
             <ExtensionsStyles Settings={settings}/>
             <ExtensionsJS Settings={settings}/> 
@@ -201,7 +202,6 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
         <body class="h-full dark:bg-black bg-white"> 
           <div>
             <div class="px-2" id="frame" style="
-              width: 80%;
               height: 100%;
               margin-left: auto;
               margin-right: auto;
