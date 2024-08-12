@@ -163,11 +163,52 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   ]
 ];
 
+cellToHTML["Output", string_String] := With[{sc = StringJoin["<", "script"], bsc = StringJoin["<", "/script"]}, StringRiffle[StringReplace[If[StringLength[#] > 0, If[StringTake[#, 1] == ">", StringDrop[#,1], #], #], {
+  "# "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h1 style=\"font-size:xx-large; font-weight:600; margin-bottom:0.5rem\">", w, "<","/h1>"],
+  "## "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h2 style=\"font-size:x-large; font-weight:600; margin-bottom:0.25rem\">", w, "<","/h2>"],
+  "### "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h3 style=\"font-size:large; font-weight:600; margin-bottom:0.15rem\">", w, "<","/h3>"],
+  any:(__~~__) :> StringJoin["<","p", "style=\"margin-top: 0.5rem\">", any, "<","/","p",">"],
+  sc -> StringJoin["<","noscript"],
+  bsc -> StringJoin["<","/noscript"]
+  
+}] &/@ StringSplit[string, "\n"], ""] ];
+
+cellToHTML["Input", string_String] := StringJoin["<","code style=\"font-family: monospace; display:block; margin-top:0.5rem; margin-botoom:0.5rem; padding:0.5rem; \"",">", string, "<","/code",">"];
+
+CEOCells[Rule["Notebook", notebook_]] := With[{},
+  With[{inputs = notebook["Cells"]},
+    With[{c = Select[inputs, (((#["Display"] == "markdown" || #["Display"] == "html") && #["Type"] == "Output") || (#["Type"]=="Input" && #["Display"] == "codemirror" && !StringMatchQ[#["Data"], ".md\n"~~__] && !StringMatchQ[#["Data"], ".html\n"~~__]))&]},
+      If[Length[c] == 0,
+        <p>Loading, please wait ...</p>,
+
+        Table[With[{Content = cellToHTML[cell["Type"], cell["Data"]]},
+          Print[Content];
+
+          <Content/>
+        ], {cell, c}]
+      ]
+    ]
+  ]
+]
+
+GetTitle[Rule["Notebook", notebook_]] := With[{},
+  With[{inputs = Select[notebook["Cells"], InputCellQ]},
+    With[{markdown = Select[inputs, StringMatchQ[#["Data"], ".md\n"~~__]&]},
+      If[Length[markdown] == 0,
+        "WLJS Notebook",
+
+        StringCases[markdown[[1]]["Data"], RegularExpression[".md\n#+(.*)"] :> "$1"] // First
+      ]
+    ]
+  ]
+]
+
 Component[OptionsPattern[]] := Module[{settings}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
   RootStyles = ProduceStyles[OptionValue["Root"]],
-  nid = OptionValue["Notebook"]["Hash"]
+  nid = OptionValue["Notebook"]["Hash"],
+  NId = OptionValue["Notebook"]["Hash"]
 },
 
     loadSettings[settings];
@@ -187,6 +228,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExportSymbols Notebook={notebook}/>
             <meta serializer="end-extras"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            <title><GetTitle Notebook={notebook}/></title>
             <RootStyles/>  
             <ExtensionsStyles Settings={settings}/>
             <ExtensionsJS Settings={settings}/> 
@@ -208,6 +250,9 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             ">
               <div class="h-full flex flex-col">
                 <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
+                    <div id="ceo-placeholder" class="px-3 pr-4 py-2 sm:px-2 sm:pr-3 md:px-4 md:pr-5 overflow-y-auto absolute grow bg-white" style="margin-top: 1rem; height: 100 vh; width:100%; overflow: hidden;">
+                        <CEOCells Notebook={notebook}/>
+                    </div>
                     <CellsContainer Notebook={notebook} Meta={"Static web notebook"}></CellsContainer>
                 </main>
               </div>
@@ -276,6 +321,9 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
           <script type="module">
             const jsonstorage = document.getElementById('cells-data');
             const store = JSON.parse(jsonstorage.innerText)["storage"];
+
+            const placeholder = document.getElementById('ceo-placeholder');
+            const container = document.getElementById('container-<NId/>');
           
 
             const process = async () => {
@@ -290,7 +338,24 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
               }
             }
 
-            process();
+            process().then(() => {
+
+              const placeholderAnimation = [
+                { opacity: "1" },
+                { opacity: "0" },
+              ];
+
+              const placeholderTiming = {
+                duration: 200,
+                iterations: 1,
+              };
+
+              placeholder.animate(placeholderAnimation, placeholderTiming).finished.then(() => {
+                placeholder.remove();
+                container.style.filter = 'none';
+              });
+              
+            });
           </script>
         </body>
     </html>

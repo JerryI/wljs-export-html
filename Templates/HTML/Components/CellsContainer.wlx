@@ -7,7 +7,7 @@ CreatedDate = Now // TextString;
 
 UserName = $Username // TextString;
 
-<div class="ccontainer px-3 pr-4 py-2 sm:px-2 sm:pr-3 md:px-4 md:pr-5 overflow-y-auto grow bg-white" style=" padding-bottom: 5rem; position: relative; margin-top: 1rem;" id="container-{id}">
+<div class="ccontainer px-3 pr-4 py-2 sm:px-2 sm:pr-3 md:px-4 md:pr-5 overflow-y-auto grow bg-white" style=" padding-bottom: 5rem; position: relative; margin-top: 1rem; filter: blur(150px);" id="container-{id}">
 <button id="questionmark" class="mt-4 p-1 px-2 hover:bg-gray-100 rounded right-0 absolute text-gray-500"  style="right: 1rem; z-index: 150;"><svg version="1.1" class="w-5 h-5 text-gray-400 hover:rotate-90 transition" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"></circle>
 <path d="M10.125 8.875C10.125 7.83947 10.9645 7 12 7C13.0355 7 13.875 7.83947 13.875 8.875C13.875 9.56245 13.505 10.1635 12.9534 10.4899C12.478 10.7711 12 11.1977 12 11.75V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
