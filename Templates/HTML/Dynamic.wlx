@@ -187,10 +187,10 @@ cellToHTML["Output", string_String] := With[{sc = StringJoin["<", "script"], bsc
   "# "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h1 style=\"font-size:xx-large; font-weight:600; margin-bottom:0.5rem\">", w, "<","/h1>"],
   "## "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h2 style=\"font-size:x-large; font-weight:600; margin-bottom:0.25rem\">", w, "<","/h2>"],
   "### "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h3 style=\"font-size:large; font-weight:600; margin-bottom:0.15rem\">", w, "<","/h3>"],
-  any:(__~~__) :> StringJoin["<","p", "style=\"margin-top: 0.5rem\">", any, "<","/","p",">"],
   sc -> StringJoin["<","noscript"],
-  bsc -> StringJoin["<","/noscript"]
-  
+  bsc -> StringJoin["<","/noscript"],
+  RegularExpression["\\[([^\\[\\]]*)\\]\\(([^\\(\\)]*)\\)"] :> With[{text = "$1", link = "$2"}, StringJoin["<","a href=\"", link, "\" >", text, "<", "/", "a>"]],
+  any:(__~~__) :> StringJoin["<","p", "style=\"margin-top: 0.5rem\">", any, "<","/","p",">"]
 }] &/@ StringSplit[string, "\n"], ""] ];
 
 cellToHTML["Input", string_String] := StringJoin["<","code style=\"font-family: monospace; display:block; margin-top:0.5rem; margin-botoom:0.5rem; padding:0.5rem; \"",">", string, "<","/code",">"];
@@ -250,12 +250,12 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExportSymbols Notebook={notebook}/>
             <meta serializer="end-extras"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            <title><GetTitle Notebook={notebook}/></title>
             <RootStyles/>  
             <ExtensionsStyles Settings={settings}/>
             <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
-            <title><GetTitle Notebook={notebook}/></title>
             <style>
               .cwrapper {
                 padding-top: 0.25rem;
