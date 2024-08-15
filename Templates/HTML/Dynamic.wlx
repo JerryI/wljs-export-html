@@ -307,24 +307,26 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
                     kernels[i].state = new KernelState(kernels[i].state, message, true);
                   }
 
-                  kernels[i].state.exec(kernels[i].database, (fn) => {
+                  kernels[i].state.exec(kernels[i].database, async (fn) => {
                     for (const f of Object.keys(fn)) {
                       if (f === '$state') continue;
 
                       if (fn[f].set.length === 1) {       
                         core[f].data = fn[f].set[0];
                         for (const inst of Object.values(core[f].instances)) {
-                          inst.update();
+                          await inst.update();
                         };
                       } else {
                         fn[f].i += 1;
                         if (fn[f].i >= fn[f].set.length) fn[f].i = 0;
                         core[f].data = fn[f].set[fn[f].i];
                         for (const inst of Object.values(core[f].instances)) {
-                          inst.update();
+                          await inst.update();
                         };
                       }
                     }
+
+                    
                   });
                 }
               }, 2);
