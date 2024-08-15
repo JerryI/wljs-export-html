@@ -14,7 +14,7 @@ let SamplerNode = false;
 
 core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Init = async (args, env) => {
     const channel = await interpretate(args[0], env);
-    if (!SamplerNode) SamplerNode = (await import('./sampler-7a4f1eb9.js')).SamplerNode;
+    if (!SamplerNode) SamplerNode = (await import('./sampler-e2164a6f.js')).SamplerNode;
     instance.sampler = new SamplerNode(instance, channel);
 
     instance.sampler.emitter = (ev) => {

@@ -1,39 +1,145 @@
-import { findPositions, filterKeys } from "./findpositions";
-import { eventNameToString, KernelMesh } from "./mesh";
+import { A as AnalyzerNode, e as eventNameToString, K as KernelMesh } from './analyzer-4aa51cef.js';
 
-import { AnalyzerNode } from './analyzer.js';
+const permutator = (inputArr) => {
+  let result = [];
 
-import { KernelState } from "./state.js";
+  const permute = (arr, m = []) => {
+    if (arr.length === 0) {
+      result.push(m);
+    } else {
+      for (let i = 0; i < arr.length; i++) {
+        let curr = arr.slice();
+        let next = curr.splice(i, 1);
+        permute(curr.slice(), m.concat(next));
+     }
+   }
+ };
 
-function memorySizeOf(obj) {
-  var bytes = 0;
+ permute(inputArr);
 
-  function sizeOf(obj) {
-    if (obj !== null && obj !== undefined) {
-      switch (typeof obj) {
-        case "number":
-          bytes += 8;
-          break;
-        case "string":
-          bytes += obj.length * 2;
-          break;
-        case "boolean":
-          bytes += 4;
-          break;
-        case "object":
-          var objClass = Object.prototype.toString.call(obj).slice(8, -1);
-          if (objClass === "Object" || objClass === "Array") {
-            for (var key in obj) {
-              if (!obj.hasOwnProperty(key)) continue;
-              sizeOf(obj[key]);
-            }
-          } else bytes += obj.toString().length * 2;
-          break;
+ return result;
+};
+
+class KernelState {
+  state = {}
+  hash = ''
+  
+  constructor (state = undefined, ev, ffast = false) {
+    if (state) this.state = {...state.state};
+    const code = String(ev.uid) + String(ev.pattern);
+    this.state[code] = ev.data;
+    const self = this;
+    if (ffast) {
+      this.hash = [Object.keys(this.state)].map((variant) => variant.reduce((acc, e) => {
+        const h = 'dt'+String(self.state[e]) + 'st'+String(e);
+        return acc + h;
+      }, 0));
+
+      return this;
+    }
+
+    this.hash = permutator(Object.keys(this.state)).map((variant) => variant.reduce((acc, e) => {
+      const h = 'dt'+String(self.state[e]) + 'st'+String(e);
+      return acc + h;
+    }, 0));
+
+
+    return this;
+  }
+
+  match(state) {
+    for (const prop of Object.keys(this.state)) {
+      if (state[prop] != this.state[prop]) return false;
+    }
+
+    return true;
+  }
+  
+  set (o, m, opts = {}) {
+    let found = false;
+
+    for (const h of this.hash) {
+      if (m.has(h)) {
+        found = h;
+        break;
+      }
+      
+    }
+
+    let object;
+
+    if (!found) {
+      object = {$state: this.state};
+      found = this.hash[0];
+      m.set(found, object);
+      for (let k = 1; k<this.hash.length; ++k) {
+        if (m.has(this.hash[k])) {
+          console.error('COLLISION!');
+          console.warn(m.get(this.state));
+          const fwd = m.get(this.hash[k]);
+          console.warn(fwd);
+          if (!fwd.$collided) fwd.$collided = [];
+          const extra = {};
+          fwd.$collided.push(extra);
+          extra.$state = this.state;
+          extra.fwd = found;
+          continue;
+        }
+        m.set(this.hash[k], {fwd: found, $state: this.state});
+      }
+    } else {
+      object = m.get(found);
+      if (!this.match(object.$state)) {
+        console.warn('Collision!');
+        if (!object.$collided) object.$collided = [];
+        const extra = {};
+        object.$collided.push(extra);
+        extra.$state = this.state;
+        object = extra;
       }
     }
-    return bytes;
+    
+
+    //object.state = {...this.state};//debug only
+    if (opts.noduplicates) {
+      object[o.name] = {set:[o.data], i:0};
+      return this;
+    }
+
+    if (o.name in object) {
+      object[o.name].set.push(o.data);
+    } else {
+      object[o.name] = {i:0, set:[o.data]}; 
+    }
   }
-  return sizeOf(obj);
+  
+  exec (m, fn) {
+    let h = this.hash[0];
+    while(m.has(h)) {
+      let o = m.get(h);
+
+      if (!this.match(o.$state)) {
+        console.warn('COLLISION!');
+        console.warn(o);
+        console.warn(this);
+        o = object.$collided.find((el) => this.match(el.$state));
+      }
+
+      if (o.fwd) {
+        h = o.fwd;
+        continue;
+      }
+
+      //console.warn(this.state);
+      //console.warn(o);
+
+      return fn(o)
+    }
+
+    console.error('State does not exists!');
+    console.log(this.state);
+    console.log(this.hash);
+  }
 }
 
 function removeDuplicates(arr) {
@@ -59,12 +165,12 @@ function countDuplicates(arr) {
   return Array.from(countMap.values()).sort((el1, el2)=>(-el1 + el2));
 }
 
-let mem = () => 0
+let mem = () => 0;
 
 if (performance.memory)
-  mem = () => performance.memory.totalJSHeapSize/1024.0
+  mem = () => performance.memory.totalJSHeapSize/1024.0;
 
-export class SamplerNode {
+class SamplerNode {
   que = {}
   aborted = false
 
@@ -144,8 +250,6 @@ export class SamplerNode {
       if (!eventObject.animation) return;
       console.warn('Animation detected!');
 
-      let size = 0;
-
       const frames = group.structure.filter((e) => (e.type === code)).map((frame) => {
         const elements = frame.elements;
         return elements.map((u) => {
@@ -175,7 +279,7 @@ export class SamplerNode {
       await this.sample(group);
     }
 
-    const totalSize = this.groups.reduce((acc, curr) => acc + (curr.mesh.length *2), 0)
+    const totalSize = this.groups.reduce((acc, curr) => acc + (curr.mesh.length *2), 0);
     console.warn('Finished!');
     server.emitt(this.channel, `<|"Info" -> "Finished!", "Size" -> ${totalSize / 1024}, "Max" -> 1.0, "Bar" -> 1.0|>`, 'Progress'); 
     server.emitt(this.channel, 'True', 'Done'); 
@@ -193,7 +297,7 @@ export class SamplerNode {
     let individualPoints = [];
     const map = new Map();
 
-    const mem_before = mem();
+    mem();
 
     let list = Object.values(group.eventObjects).filter((o) => (!o.animation));
 
@@ -218,7 +322,6 @@ export class SamplerNode {
       if (this.aborted) return;
       console.warn('Go reqursively!');
       console.warn('Reset to initial state!');
-      let index = 0;
       //let state = new KernelState();
 
       //reset
@@ -311,8 +414,7 @@ export class SamplerNode {
 
       if (this.aborted) return;
       
-    };
-    }
+    }    }
 
     console.warn('Checking animations');
     if (this.aborted) return;
@@ -372,8 +474,4 @@ export class SamplerNode {
 
 }
 
-  
-
-  
-  
-  
+export { SamplerNode };
