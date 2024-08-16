@@ -41,11 +41,21 @@ cellProcess[data_, "Input", "codemirror", _, _] := <|"Data" -> With[{splitted = 
   ]
 ] |>
 
+removeArrows[str_String] := If[StringLength[str] > 1,
+  If[StringTake[str, 1] == ">",
+    StringDrop[str, 1]
+  ,
+    str
+  ]
+,
+  str
+]
+
 cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"Data" -> 
   If[settings["ExportHTMLImages"] === False,
-    data["Data"]
+    data["Data"] // removeArrows
   ,
-    StringReplace[data["Data"], {
+    StringReplace[data["Data"] // removeArrows, {
         RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
