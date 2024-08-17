@@ -143,12 +143,13 @@ EventHandler[OnLoad, Function[Null,
             
                 const copy = {...env};
                 const store = await obj.get();
-                const instance = new ExecutableObject('preview-'+uuidv4(), copy, store);
+                const instance = new ExecutableObject('preview-static-'+uuidv4(), copy, store, true);
                 instance.assignScope(copy);
                 
                 //don't increase number of references
                 //obj.assign(instance);
             
+                console.warn('Installing component #' + instance.uid);
                 await instance.execute();                
             });
 	    });
