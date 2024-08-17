@@ -31,7 +31,7 @@ generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markd
 
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
 
-exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -70,7 +70,7 @@ exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, pa
     ]
 ]
 
-exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -105,7 +105,7 @@ figuresCodeModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal
 {figuresTemplate, figuresHead} = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Figures", "Template.wlx"}] ];
 
 
-exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
     objects = notebookOnLine["Objects"],
     sym     = notebookOnLine["Symbols"]
 },
@@ -196,7 +196,7 @@ Notebook`Editor`ExportNotebook`Internal`Sampler;
 analyser = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Analyser.wlx"}] ];
 sampler = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Sampler.wlx"}] ];
 
-sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := Module[{
+sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{
     notification
 }, With[{
     channel = CreateUUID[]
@@ -243,7 +243,7 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
                                 Module[{filename = result<>".html"},
                                     If[filename === ".html", filename = name<>filename];
                                     If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
-                                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "Compressed"->compressed, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "ExtensionTemplates" -> ext, "Compressed"->compressed, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
                                     EventFire[messager, "Saved", "Exported to "<>filename];
                                 ];
                             ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
@@ -266,7 +266,7 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
     EventFire[messager, notification, True];
 ] ]
 
-exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := Module[{notification, dump, raw, groups}, With[{
+exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
     sniffer = CreateUUID[]
 },
     If[notebookOnLine["Evaluator"]["Kernel"]["State"] =!= "Initialized", 
@@ -278,7 +278,7 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
     EventHandler[sniffer, {
         "Continue" -> Function[Null,
             WebUISubmit[Sniffer["Eject", sniffer], client];
-            sampling[controls, modals, messager, client, notebookOnLine, path, name];
+            sampling[controls, modals, messager, client, notebookOnLine, path, name, ext];
 
             Delete[notification];
         ],
@@ -299,7 +299,7 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
 ] ]
 
 
-exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_] := With[{
+exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -320,7 +320,7 @@ exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path
                 Module[{filename = result<>".html"},
                     If[filename === ".html", filename = name<>filename];
                     If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
-                    Export[filename, generateNotebook["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    Export[filename, generateNotebook["Root"->rootFolder, "ExtensionTemplates" -> ext, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
                     EventFire[messager, "Saved", "Exported to "<>filename];
                 ];
             ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
@@ -334,7 +334,8 @@ processRequest[controls_, modals_, messager_, client_] := With[{
 },
     With[{
         path = DirectoryName[ notebookOnLine["Path"] ],
-        name = FileBaseName[ notebookOnLine["Path"] ]
+        name = FileBaseName[ notebookOnLine["Path"] ],
+        ext  = AppExtensions`Templates
     },
         With[{
             p = Promise[]
@@ -344,7 +345,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];

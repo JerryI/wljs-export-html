@@ -175,12 +175,14 @@ input::selection {
   background-color: rgb(243 244 246 / var(--tw-bg-opacity)) /* #f3f4f6 */;
 }
 
-#frame {
-  width:80%;    
+main {
+  width: calc(100% - 16rem) !important;
+  display: inline-block !important; 
 }
 
 @media (max-width: 1250px) {
-  #frame {
-  width:98%;    
+  main {
+    width: 100% !important;
+    display: inline-block !important;    
   }
 }

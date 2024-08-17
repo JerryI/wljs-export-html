@@ -164,13 +164,14 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
 ];
 
 cellToHTML["Output", string_String] := With[{sc = StringJoin["<", "script"], bsc = StringJoin["<", "/script"]}, StringRiffle[StringReplace[If[StringLength[#] > 0, If[StringTake[#, 1] == ">", StringDrop[#,1], #], #], {
-  "# "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h1 style=\"font-size:xx-large; font-weight:600; margin-bottom:0.5rem\">", w, "<","/h1>"],
-  "## "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h2 style=\"font-size:x-large; font-weight:600; margin-bottom:0.25rem\">", w, "<","/h2>"],
-  "### "~~(w:(WordCharacter | DigitCharacter | WhitespaceCharacter)..) :> StringJoin["<","h3 style=\"font-size:large; font-weight:600; margin-bottom:0.15rem\">", w, "<","/h3>"],
-  any:(__~~__) :> StringJoin["<","p", "style=\"margin-top: 0.5rem\">", any, "<","/","p",">"],
+  "# "~~w__ :> StringJoin["<","h1 style=\"font-size:xx-large; font-weight:600; margin-bottom:0.5rem\">", w, "<","/h1>"],
+  "## "~~w__ :> StringJoin["<","h2 style=\"font-size:x-large; font-weight:600; margin-bottom:0.25rem\">", w, "<","/h2>"],
+  "### "~~w__ :> StringJoin["<","h3 style=\"font-size:large; font-weight:600; margin-bottom:0.15rem\">", w, "<","/h3>"],
   sc -> StringJoin["<","noscript"],
-  bsc -> StringJoin["<","/noscript"]
-  
+  bsc -> StringJoin["<","/noscript"],
+  RegularExpression["\\[([^\\[\\]]*)\\]\\(([^\\(\\)]*)\\)"] :> With[{text = "$1", link = "$2"}, StringJoin["<","a href=\"", link, "\" >", text, "<", "/", "a>"]],
+  any:(__~~__) :> StringJoin["<","p", "style=\"margin-top: 0.5rem\">", any, "<","/","p",">"]
+
 }] &/@ StringSplit[string, "\n"], ""] ];
 
 cellToHTML["Input", string_String] := StringJoin["<","code style=\"font-family: monospace; display:block; margin-top:0.5rem; margin-botoom:0.5rem; padding:0.5rem; \"",">", string, "<","/code",">"];
@@ -206,6 +207,7 @@ GetTitle[Rule["Notebook", notebook_]] := With[{},
 Component[OptionsPattern[]] := Module[{settings}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
+  ExtensionTemplates = OptionValue["ExtensionTemplates"],
   RootStyles = ProduceStyles[OptionValue["Root"]],
   nid = OptionValue["Notebook"]["Hash"],
   NId = OptionValue["Notebook"]["Hash"]
@@ -243,18 +245,22 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
         </head>  
         <body class="h-full dark:bg-black bg-white"> 
           <div>
-            <div class="px-2" id="frame" style="
-              height: 100%;
-              margin-left: auto;
-              margin-right: auto;
-            ">
-              <div class="h-full flex flex-col">
-                <main class="grow flex flex-col dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white shadow">
-                    <div id="ceo-placeholder" class="px-3 pr-4 py-2 sm:px-2 sm:pr-3 md:px-4 md:pr-5 overflow-y-auto absolute grow bg-white" style="margin-top: 1rem; height: 100 vh; width:100%; overflow: hidden;">
+            <div class="px-2" id="frame">
+              <div class="h-full block relative" style="
+                width: calc(100vw - 0.5rem);
+                overflow-x: hidden;
+              ">
+                <main class="grow dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white" >
+                    <div id="ceo-placeholder" class="px-3 pr-4 py-2 sm:px-2 sm:pr-3 ml-4 md:px-4 md:pr-5 overflow-y-auto absolute grow bg-white" style="margin-top: 1rem; height: 100 vh; width:100%; overflow: hidden;">
                         <CEOCells Notebook={notebook}/>
                     </div>
                     <CellsContainer Notebook={notebook} Meta={"Static web notebook"}></CellsContainer>
                 </main>
+                <div id="sidebar-right" class="relative mt-10 w-full hidden md:flex" style="width: 16rem;height: 100vh;float: right; opacity:0;">
+                  <div class="fixed">
+                    <ExtensionTemplates Notebook={notebook} Template={"HTMLExportSidebar"} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>   
@@ -323,6 +329,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             const store = JSON.parse(jsonstorage.innerText)["storage"];
 
             const placeholder = document.getElementById('ceo-placeholder');
+            const sidebar = document.getElementById("sidebar-right");
             const container = document.getElementById('container-<NId/>');
           
 
@@ -352,6 +359,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 
               placeholder.animate(placeholderAnimation, placeholderTiming).finished.then(() => {
                 placeholder.remove();
+                sidebar.style.opacity = 1;
                 container.style.filter = 'none';
               });
               
@@ -362,6 +370,6 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
   } // StringRiffle
 ]]
 
-Options[Component] = {"Title" -> "Example", "Notebook"->""}
+Options[Component] = {"Title" -> "Example", "Notebook"->"", "ExtensionTemplates"->{}}
 
 Component
