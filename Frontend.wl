@@ -25,6 +25,7 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 settings = <||>;
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Static.wlx"}] ];
+{generateMDX, generateMDXStore}      = ImportComponent[FileNameJoin[{rootFolder, "Templates", "MDX", "Static.wlx"}] ];
 generateDynamicNotebook= ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Dynamic.wlx"}] ];
 generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides", "Static.wlx"}] ];
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown", "Markdown.wlx"}] ];
@@ -329,6 +330,85 @@ exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path
     ]
 ]
 
+reactInfo = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal", "ReactInfo.wlx"}] ];
+
+existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
+
+getRepo[Rule[_, url_String]] := StringReplace[url, "https://github.com/"~~s_:>s]
+getBranch[Rule[_, url_String]] := "master"
+
+getRepo[Rule[_, Rule[url_String, _]]] := StringReplace[url, "https://github.com/"~~s_:>s]
+getBranch[Rule[_, Rule[url_String, branch_String]]] := branch
+
+
+exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+
+},
+    With[{
+
+    },
+        
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"MDX notebook",
+                "Ext"->"mdx",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".mdx"},
+                    If[filename === ".mdx", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                    Export[filename, generateMDX["Root"->rootFolder, "ExtensionTemplates" -> ext, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    
+                    With[{newDir = DirectoryName[filename]},
+                        If[!FileExistsQ[FileNameJoin[{newDir, "attachments"}] ], CreateDirectory[FileNameJoin[{newDir, "attachments"}] ] ];
+
+                        If[FileExistsQ[FileNameJoin[{DirectoryName[notebookOnLine["Path"] ], "attachments"}] ], 
+                            (
+                                Echo["Copying from "<>#<>" >>  to "<>FileNameJoin[{newDir, "attachments", FileNameTake[#]}] ];
+                                CopyFile[#, FileNameJoin[{newDir, "attachments", FileNameTake[#]}], OverwriteTarget->True];
+                            
+                            ) &/@ FileNames["*.*", FileNameJoin[{DirectoryName[notebookOnLine["Path"] ], "attachments"}] ];
+                        ];
+
+                        CopyFile[notebookOnLine["Path"], FileNameJoin[{newDir, "attachments", "notebook-"<>StringTake[notebookOnLine["Hash"], 3]<>".wln"}] ];
+                        Export[FileNameJoin[{newDir, "attachments", notebookOnLine["Hash"]<>".txt"}], generateMDXStore[notebookOnLine], "Text" ];
+                    ];
+
+                    With[{
+                        libs = (With[{
+    url = StringJoin[StringTemplate["https://cdn.jsdelivr.net/gh/``@``/"][getRepo[#["key"] ], getBranch[#["key"] ] ], #["path"] ]
+  },
+
+    "\""<>url<>"\","
+
+  ]& /@ Flatten[Table[
+      Table[
+          Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
+          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
+      , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
+  , {i, Select[WLJS`PM`Packages // Keys, (WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "js"])&]} ] ]) // ToStringRiffle
+                    },
+                        EventFire[modals, "CustomModal", <|
+                            "Promise"->Null,
+                            "Data" -> <|"Libs"->libs|>,
+                            "Content" -> reactInfo,
+                            "Client"->client
+                        |>];
+                    ];
+                    
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]
+    ]
+]
+
 processRequest[controls_, modals_, messager_, client_] := With[{
     notebookOnLine = getNotebook[controls]
 },
@@ -340,12 +420,12 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)"}|>];
             Then[p, Function[choise,
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];

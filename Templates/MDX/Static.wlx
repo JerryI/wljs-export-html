@@ -1,0 +1,162 @@
+(* tokenizer *)
+
+parseTag[str_] := {
+    StringPosition[str, RegularExpression["\\<(\\w*)(\\s*(((\\w|-)*)=\\\"([^\"]+)\")*((\\w*)=\\{([^\\<\\>]+)\\})*)*\\>"]],
+    StringPosition[str, RegularExpression["(\\<\\/[^\\<|\\>|\\/]*\\>)"]],
+    StringPosition[str, RegularExpression["(\\<[^\\<|\\>]*\\/\\>)"]]
+}
+
+fixLinks[str_] := StringReplace[str, {
+    RegularExpression["\\[([^\\[^\\]]*)\\]\\(\\/([^\\[^\\]]+\\))"] :> StringJoin["[$1]", "($2"],
+    RegularExpression["src=\"\\/([^\"]+)\""] :> StringJoin["src=\"", "$1", "\""],
+    RegularExpression["href=\"\\/([^\"]+)\""] :> StringJoin["href=\"", "$1", "\""]
+}]
+
+fixLatex[str_] := With[{slash = FromCharacterCode[{92}], double = FromCharacterCode[{92,92}]},
+    StringReplace[str, double -> slash] 
+]
+
+fixMarkdownBug[str_] := If[StringTake[str,1] == ">", StringDrop[str,1], str]
+
+escapeHTML[str_String] := Module[{
+    tokens, depth, assembled = "", open, close, singular, higherLevel, isType
+},
+
+    isType[t_String][token_token] := token[[2]] == t;
+    isType[_][_] := False;
+
+    higherLevel[n_][t_token] := (
+        TrueQ[t[[3]] > n]
+    );
+    
+    higherLevel[_][_] := True; 
+
+    {open, close, singular} = parseTag[str];
+
+    tokens = SortBy[Flatten @ {Map[token[#, "open"]&, open], Map[token[#, "close"]&, close], Map[token[#, "singular"]&, singular]}, #[[1,1]]&];
+
+    depth = 0;
+    tokens = MapIndexed[Function[{t, i}, 
+      If[t[[2]] == "open", depth++];
+      If[t[[2]] == "singular", depth++]; 
+      With[{g = token[t[[1]], t[[2]], depth]},
+         If[t[[2]] == "close", depth--];
+         If[t[[2]] == "singular", depth--];
+        g
+      ]
+    ], tokens];
+
+    tokens = SequenceReplace[tokens, {token[start_, "open", 1], ___?(higherLevel[1]), token[end_, "close", n_]} :> closedGroup[{start, end}]];
+
+    If[Length[tokens] == 0, 
+        Return[fixLatex[str]];
+    ];
+
+    tokens = tokens /. {closedGroup[ranges_] :> ranges, token[ranges_, __] :> {ranges}};
+
+    start = 0;
+    Do[
+        Switch[Length[range],
+            1,
+            assembled = StringJoin[assembled, fixLatex @ StringTake[StringDrop[str, start], range[[1,1]] - start - 1 ] ];
+            start = range[[1,2]];
+            assembled = StringJoin[assembled, "<","WLJSHTML",">{`", URLEncode @ StringTake[StringDrop[str, range[[1,1]] - 1 ], range[[1,2]] - range[[1,1]] + 1 ], "`}<","/","WLJSHTML",">" ];
+        ,
+            2,
+            assembled = StringJoin[assembled, fixLatex @ StringTake[StringDrop[str, start], range[[1,1]] - start - 1 ] ];
+            start = range[[2,2]];
+            assembled = StringJoin[assembled, "<","WLJSHTML",">{`", URLEncode @ StringTake[StringDrop[str, range[[1,1]] - 1 ], range[[2,2]] - range[[1,1]] + 1 ], "`}<","/","WLJSHTML",">" ];
+        ];
+
+    , {range, tokens}];
+
+    assembled = StringJoin[assembled, fixLatex @ StringDrop[str, start]];
+    assembled
+]
+
+transformCell[cell_, "Input", "markdown"]  := Nothing
+transformCell[cell_, "Output", "markdown"] := escapeHTML @  fixLinks @ fixMarkdownBug @ cell["Data"]
+
+transformCell[cell_, "Output", "html"] := wrapHTML @ fixLinks @ cell["Data"]
+transformCell[cell_, "Output", "wlx"] := wrapHTML @ fixLinks @ cell["Data"]
+
+
+escape[str_String] := StringReplace[str, "`" -> "\\`"]
+
+wrapHTML[str_String] := StringJoin["<","WLJSHTML",">{`",URLEncode[str],"`}<","/","WLJSHTML>"]
+
+transformCell[cell_, "Input", "codemirror"] := With[{
+    opts = ExportString[cell["Props"], "JSON", "Compact"->0],
+    id = cell["Hash"],
+    nid = cell["Notebook"]["Hash"],
+    display = cell["Display"],
+    data = cell["Data"]
+},
+    If[!(!TrueQ[cell["Props"]["Hidden"]] && !TrueQ[cell["Invisible"]] && StringLength[StringTrim[data]] > 0),
+        Nothing
+    ,
+        StringJoin["<", "WLJSEditor ", "display={\"", display ,"\"} ", "nid={\"", nid, "\"} ", "id={\"", id, "\"} ", "type={\"Input\"} ", "opts={", opts, "} ", ">{`", URLEncode[data], "`}<", "/", "WLJSEditor", ">"]
+    ] 
+]
+
+transformCell[cell_, "Output", _] := With[{
+    opts = ExportString[cell["Props"], "JSON", "Compact"->0],
+    id = cell["Hash"],
+    nid = cell["Notebook"]["Hash"],
+    display = cell["Display"],
+    data = cell["Data"]
+},
+    StringJoin["<", "WLJSEditor ", "display={\"", display ,"\"} ", "nid={\"", nid, "\"} ", "id={\"", id, "\"} ", "type={\"Output\"} ", "opts={", opts, "} ", ">{`", URLEncode[data], "`}<", "/", "WLJSEditor", ">"]
+]
+
+transformCell[cell_] := transformCell[cell, cell["Type"], cell["Display"]]
+
+getStorageId[notebook_] := With[{hash = notebook["Hash"]},
+    StringJoin["<","WLJSNotebook"," id={\"", hash, "\"}/>"]
+]
+
+exportStore[notebook_] := With[{
+    objs = ExportByteArray[#["Public"] &/@ notebook["Objects"], "ExpressionJSON", "Compact"->1] // ByteArrayToString,
+    syms = ExportByteArray[If[MemberQ[notebook["Properties"], "Symbols"], notebook["Symbols"], <||>], "ExpressionJSON", "Compact"->1] // ByteArrayToString
+  },
+  
+    StringJoin["{\n\"objects\":",objs,", \n\"symbols\":",syms,"\n}"]
+]
+
+
+metaCell[NId_] := With[{},
+  StringJoin[
+        "import { WLJSHTML, WLJSEditor, WLJSStore } from \"@site/src/components/wljs-notebook\";\n\r\n"
+    ,
+        "\n\r\n"
+    ,
+        StringJoin["<","WLJSStore"," json={require('./attachments/",NId,".txt').default}"," notebook={require('./attachments/notebook-",StringTake[NId,3],".wln').default}", "/",">\r\n\n"]
+    ,
+        "\n"
+  ]
+]
+
+Component[OptionsPattern[]] := Module[{settings}, With[{
+    Title = OptionValue["Title"],
+    notebook = OptionValue["Notebook"],
+    ExtensionTemplates = OptionValue["ExtensionTemplates"],
+    NId = OptionValue["Notebook"]["Hash"]
+  },
+
+  With[{
+    Cells = StringRiffle[Insert[transformCell /@ notebook["Cells"], metaCell[NId], 2], "\n\n"],
+    FrontEndStorage = getStorageId[notebook]
+  },
+
+    {
+        <Cells/>    
+    } // ToStringRiffle
+
+  ]
+
+] ];
+
+Options[Component] = {"Title" -> "Example", "Notebook"->"", "ExtensionTemplates"->{}}
+
+
+{Component, exportStore}
