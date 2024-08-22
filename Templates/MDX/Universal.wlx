@@ -124,13 +124,17 @@ exportStore[notebook_] := With[{
 ]
 
 
-metaCell[NId_] := With[{},
+metaCell[NId_, dynamicQ_] := With[{},
   StringJoin[
-        "import { WLJSHTML, WLJSEditor, WLJSStore } from \"@site/src/components/wljs-notebook\";\n\r\n"
+        "import { WLJSHTML, WLJSEditor, WLJSStore } from \"@site/src/components/wljs-reactcells\";\n\r\n"
     ,
         "\n\r\n"
     ,
-        StringJoin["<","WLJSStore"," json={require('./attachments/",NId,".txt').default}"," notebook={require('./attachments/notebook-",StringTake[NId,3],".wln').default}", "/",">\r\n\n"]
+        If[dynamicQ,
+            StringJoin["<","WLJSStore"," kernel={require('./attachments/kernel.txt').default}", " json={require('./attachments/",NId,".txt').default}"," notebook={require('./attachments/notebook-",StringTake[NId,3],".wln').default}", "/",">\r\n\n"]
+        ,
+            StringJoin["<","WLJSStore"," json={require('./attachments/",NId,".txt').default}"," notebook={require('./attachments/notebook-",StringTake[NId,3],".wln').default}", "/",">\r\n\n"]
+        ]
     ,
         "\n"
   ]
@@ -140,11 +144,12 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
     Title = OptionValue["Title"],
     notebook = OptionValue["Notebook"],
     ExtensionTemplates = OptionValue["ExtensionTemplates"],
-    NId = OptionValue["Notebook"]["Hash"]
+    NId = OptionValue["Notebook"]["Hash"],
+    dynamicQ = OptionValue["DynamicQ"]
   },
 
   With[{
-    Cells = StringRiffle[Insert[transformCell /@ notebook["Cells"], metaCell[NId], 2], "\n\n"],
+    Cells = StringRiffle[Insert[transformCell /@ notebook["Cells"], metaCell[NId, dynamicQ], 2], "\n\n"],
     FrontEndStorage = getStorageId[notebook]
   },
 
@@ -156,7 +161,7 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 
 ] ];
 
-Options[Component] = {"Title" -> "Example", "Notebook"->"", "ExtensionTemplates"->{}}
+Options[Component] = {"Title" -> "Example", "Notebook"->"", "ExtensionTemplates"->{}, "DynamicQ" -> False}
 
 
 {Component, exportStore}

@@ -25,7 +25,7 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 settings = <||>;
 
 generateNotebook = ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Static.wlx"}] ];
-{generateMDX, generateMDXStore}      = ImportComponent[FileNameJoin[{rootFolder, "Templates", "MDX", "Static.wlx"}] ];
+{generateMDX, generateMDXStore}      = ImportComponent[FileNameJoin[{rootFolder, "Templates", "MDX", "Universal.wlx"}] ];
 generateDynamicNotebook= ImportComponent[FileNameJoin[{rootFolder, "Templates", "HTML", "Dynamic.wlx"}] ];
 generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides", "Static.wlx"}] ];
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown", "Markdown.wlx"}] ];
@@ -197,7 +197,7 @@ Notebook`Editor`ExportNotebook`Internal`Sampler;
 analyser = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Analyser.wlx"}] ];
 sampler = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Sampler.wlx"}] ];
 
-sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{
+sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_, cbk_] := Module[{
     notification
 }, With[{
     channel = CreateUUID[]
@@ -230,26 +230,8 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
                         Echo["Compressed by the factor of "<>ToString[ratio] ]; 
                         
 
-                        With[{
-                            p = Promise[]
-                        },
-                            EventFire[modals, "RequestPathToSave", <|
-                                "Promise"->p,
-                                "Title"->"Portable notebook",
-                                "Ext"->"html",
-                                "Client"->client
-                            |>];
-
-                            Then[p, Function[result, 
-                                Module[{filename = result<>".html"},
-                                    If[filename === ".html", filename = name<>filename];
-                                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
-                                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "ExtensionTemplates" -> ext, "Compressed"->compressed, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
-                                    EventFire[messager, "Saved", "Exported to "<>filename];
-                                ];
-                            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
-
-                        ]                       
+                        cbk[compressed];
+                                               
                     ];
 
 
@@ -279,7 +261,28 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
     EventHandler[sniffer, {
         "Continue" -> Function[Null,
             WebUISubmit[Sniffer["Eject", sniffer], client];
-            sampling[controls, modals, messager, client, notebookOnLine, path, name, ext];
+            sampling[controls, modals, messager, client, notebookOnLine, path, name, ext, Function[compressed,
+                With[{
+                            p = Promise[]
+                        },
+                            EventFire[modals, "RequestPathToSave", <|
+                                "Promise"->p,
+                                "Title"->"Portable notebook",
+                                "Ext"->"html",
+                                "Client"->client
+                            |>];
+
+                            Then[p, Function[result, 
+                                Module[{filename = result<>".html"},
+                                    If[filename === ".html", filename = name<>filename];
+                                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                                    Export[filename, generateDynamicNotebook["Root"->rootFolder, "ExtensionTemplates" -> ext, "Compressed"->compressed, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                                    EventFire[messager, "Saved", "Exported to "<>filename];
+                                ];
+                            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+
+                        ]
+            ] ];
 
             Delete[notification];
         ],
@@ -341,7 +344,7 @@ getRepo[Rule[_, Rule[url_String, _]]] := StringReplace[url, "https://github.com/
 getBranch[Rule[_, Rule[url_String, branch_String]]] := branch
 
 
-exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_, dynamicQ_:False, compressed_:Null] := With[{
 
 },
     With[{
@@ -362,7 +365,7 @@ exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
                 Module[{filename = result<>".mdx"},
                     If[filename === ".mdx", filename = name<>filename];
                     If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
-                    Export[filename, generateMDX["Root"->rootFolder, "ExtensionTemplates" -> ext, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    Export[filename, generateMDX["Root"->rootFolder, "DynamicQ"->dynamicQ, "ExtensionTemplates" -> ext, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
                     
                     With[{newDir = DirectoryName[filename]},
                         If[!FileExistsQ[FileNameJoin[{newDir, "attachments"}] ], CreateDirectory[FileNameJoin[{newDir, "attachments"}] ] ];
@@ -377,6 +380,10 @@ exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
 
                         CopyFile[notebookOnLine["Path"], FileNameJoin[{newDir, "attachments", "notebook-"<>StringTake[notebookOnLine["Hash"], 3]<>".wln"}] ];
                         Export[FileNameJoin[{newDir, "attachments", notebookOnLine["Hash"]<>".txt"}], generateMDXStore[notebookOnLine], "Text" ];
+
+                        If[dynamicQ,
+                            Export[FileNameJoin[{newDir, "attachments", "kernel.txt"}], ExportString[compressed, "JSON"], "Text" ];
+                        ];
                     ];
 
                     With[{
@@ -409,6 +416,43 @@ exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
     ]
 ]
 
+
+exportDynamicMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
+    sniffer = CreateUUID[]
+},
+    If[notebookOnLine["Evaluator"]["Kernel"]["State"] =!= "Initialized", 
+        EventFire[messager, "Error", "Exporting dynamic HTML document requires connected Kernel and initialized notebook session."];
+        Return[];
+    ];
+
+
+    EventHandler[sniffer, {
+        "Continue" -> Function[Null,
+            WebUISubmit[Sniffer["Eject", sniffer], client];
+            sampling[controls, modals, messager, client, notebookOnLine, path, name, ext, Function[compressed,
+                exportMDX[controls, modals, messager, client, notebookOnLine, path, name, ext, True, compressed]
+            ] ];
+
+            Delete[notification];
+        ],
+
+        "Abort" -> Function[Null,
+            WebUISubmit[Sniffer["Eject", sniffer], client];
+            WebUISubmit[Sniffer["Purge", sniffer], client];
+            Delete[notification];
+        ]
+    }];
+
+    EventFire[messager, Notifications`Beeper[], True];
+    
+    WebUISubmit[Sniffer["Inject", sniffer], client];
+    notification = Notifications`Custom["Topic"->"Analysing dynamic bindings", "Body"->analyser["Sniffer"->sniffer, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
+    EventFire[messager, notification, True];
+
+] ]
+
+
+
 processRequest[controls_, modals_, messager_, client_] := With[{
     notebookOnLine = getNotebook[controls]
 },
@@ -420,12 +464,12 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)"}|>];
             Then[p, Function[choise,
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];
