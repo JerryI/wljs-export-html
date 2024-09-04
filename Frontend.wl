@@ -214,6 +214,7 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
         ],
 
         "Continue" -> Function[Null,
+            Print[">> sampler >> continue"];
             Then[WebUIFetch[Sampler["Get",  channel], client, "Format"->"RawJSON"], Function[payload,
                 
                 
@@ -243,10 +244,12 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
         ]
     }];
 
-    WebUISubmit[Sampler["Init",  channel], client];
+    
 
     notification = Notifications`Custom["Topic"->"Sampling the data", "Body"->sampler["Channel"->channel, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
     EventFire[messager, notification, True];
+    WebUISubmit[Sampler["Init",  channel], client];
+    
 ] ]
 
 exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
@@ -296,9 +299,11 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
 
     EventFire[messager, Notifications`Beeper[], True];
     
-    WebUISubmit[Sniffer["Inject", sniffer], client];
+    
     notification = Notifications`Custom["Topic"->"Analysing dynamic bindings", "Body"->analyser["Sniffer"->sniffer, "Client"->client, "Log"->messager, "Notebook"->notebookOnLine], "Controls"->False];
     EventFire[messager, notification, True];
+    WebUISubmit[Sniffer["Inject", sniffer], client];
+    
 
 ] ]
 

@@ -78,7 +78,6 @@ transformCell[cell_, "Input", "markdown"]  := Nothing
 transformCell[cell_, "Output", "markdown"] := escapeHTML @  fixLinks @ fixMarkdownBug @ cell["Data"]
 
 transformCell[cell_, "Output", "html"] := wrapHTML @ fixLinks @ cell["Data"]
-transformCell[cell_, "Output", "wlx"] := wrapHTML @ fixLinks @ cell["Data"]
 
 
 escape[str_String] := StringReplace[str, "`" -> "\\`"]
