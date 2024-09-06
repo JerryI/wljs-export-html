@@ -203,33 +203,82 @@ convert[Cell[BoxData[boxes_], "Input", ___], notebook_, kernel_] := With[{p = Pr
 
 takeFirst[expr_, ___] := expr
 
-toStringFormExperimental[boxes_] := (
+toStringFormExperimental[boxes_] := Module[{},
   Echo[ToString[boxes, InputForm] ];
-  boxes /. {StyleBox -> takeFirst}
-)
+  With[{r = ToExpression[boxes, StandardForm, HoldForm]},
+    If[r == $Failed,
+      Echo[">> Decoder >> Convertion Failed at: "];
+      Echo[ToString[boxes, InputForm] ];
+      Return[""];
+    ];
+
+    
+
+    StringJoin[" ", ToString[r], " "]
+  ]
+
+
+]
+
+toStringFormExperimental[s_String] := s
+
+toStringFormExperimental[boxes_BoxData] := Module[{r},
+  r = ToExpression[boxes[[1]], StandardForm, HoldForm];
+  If[r == $Failed,
+    Echo[">> Decoder >> Convertion Failed at: "];
+    Echo[ToString[boxes, InputForm] ];
+    Return[""];
+  ];
+  StringJoin[" $", ToString[r // TeXForm, InputForm], "$ "]
+]
+
+toStringFormExperimental[boxes_Cell] := toStringFormExperimental[boxes[[1]]]
+
+stringTest[s_String] := s
+stringTest[_] := ""
 
 convert[Cell[data_, "Text", ___], notebook_, kernel_] := (
-  CellObj["Data"->StringJoin[".md\n", ToString[data /. {StyleBox[dta_, ___] :> dta}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
-  CellObj["Data"->ToString[data /. {StyleBox[dta_, ___] :> dta}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+  CellObj["Data"->stringTest[StringJoin[".md\n", ToString[data /. {StyleBox[dta_, ___] :> dta}] ] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->stringTest[ToString[data /. {StyleBox[dta_, ___] :> dta}] ], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
   
 )
 
 convert[Cell[t: TextData[data_], "Text", ___], notebook_, kernel_] := (
-  CellObj["Data"->StringJoin[".md\n", toStringFormExperimental[data] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
-  CellObj["Data"->toStringFormExperimental[data], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
-
+  CellObj["Data"->stringTest[StringJoin[".md\n", toStringFormExperimental[data] ] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->stringTest[toStringFormExperimental[data] ], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 )
 
+convert[Cell[t: TextData[data_List], "Text", ___], notebook_, kernel_] := (
+  CellObj["Data"->stringTest[StringJoin[".md\n", StringJoin@@(ToString /@ toStringFormExperimental /@ data) ] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->stringTest[StringJoin@@(ToString /@ toStringFormExperimental /@ data)], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+)
+
+convert[Cell[text_String, "Subsubsection"], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n#### ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->StringJoin["#### ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+)
+
+convert[Cell[text_String, "Subsection"], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n### ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->StringJoin["### ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+)
+
+convert[Cell[text_String, "Section"], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n## ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->StringJoin["## ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+)
+
+
 convert[Cell[TextData[data_RowBox], "Text", ___], notebook_, kernel_] := With[{},
-  CellObj["Data"->StringJoin[".md\n", ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
-  CellObj["Data"->ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+  CellObj["Data"->stringTest[StringJoin[".md\n", ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}] ] ], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->stringTest[ToString[data /. {RowBox -> StringJoin} /. {StyleBox[dta_, ___] :> dta}] ], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 
 ]
 
 convert[Cell[BoxData[boxes_List], "Output", ___], notebook_, kernel_] := With[{p = Promise[]},
 
   Then[evaluateInPlace[StringRiffle[ToString[ToExpression[#, StandardForm], StandardForm]& /@ boxes, ""] , kernel], Function[reply,
-    CellObj["Data"->processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    CellObj["Data"->processString[reply["Data"] ], "Type"->"Output", "Notebook"->notebook ];
     EventFire[p, Resolve, True];
   ] ];
   p
@@ -240,7 +289,7 @@ convert[Cell[BoxData[boxes_List], "Output", ___], notebook_, kernel_] := With[{p
 convert[Cell[BoxData[boxes_], "Output", ___], notebook_, kernel_] := With[{p = Promise[]},
 
   Then[evaluateInPlace[StringRiffle[ToString[ToExpression[#, StandardForm], StandardForm]& /@ {boxes}, ""] , kernel], Function[reply,
-    CellObj["Data"-> processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];
+    CellObj["Data"-> processString[reply["Data"] ], "Type"->"Output", "Notebook"->notebook ];
     EventFire[p, Resolve, True];
   ] ];
   p
