@@ -113,7 +113,7 @@ cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
       
-        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|svg|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
       }
@@ -122,7 +122,7 @@ cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"
 |>]
 
 
-cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Data" -> 
+cellProcess[data_, "Output", "slide" | "slides", notebook_, settings_] := Join[data, <|"Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -131,7 +131,7 @@ cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Dat
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
 
-        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        RegularExpression["src=\"\\s?([^):\"=\\>\\<]*).(png|svg|jpeg|jpg|ttf|gif|webm|bmp)\\s?\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
       }
@@ -195,7 +195,10 @@ cellToHTML["Output", string_String] := With[{sc = StringJoin["<", "script"], bsc
 
 }] &/@ StringSplit[string, "\n"], ""] ];
 
-cellToHTML["Input", string_String] := StringJoin["<","code style=\"font-family: monospace; display:block; margin-top:0.5rem; margin-botoom:0.5rem; padding:0.5rem; \"",">", string, "<","/code",">"];
+cellToHTML["Input", string_String] := StringJoin["<","code style=\"font-family: monospace; display:block; margin-top:0.5rem; margin-botoom:0.5rem; padding:0.5rem; \"",">", StringReplace[string, 
+  {"&" -> "&amp;", "<" -> "&lt;", ">" -> "&gt;", "\"" -> "&quot;", 
+   "'" -> "&#39;"}], "<","/code",">"];
+
 
 CEOCells[Rule["Notebook", notebook_]] := With[{},
   With[{inputs = notebook["Cells"]},

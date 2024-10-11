@@ -109,7 +109,7 @@ cellProcess[data_, "Output", _, _, _] := Join[data, <|"Invisible"->True|>]
 
 cellProcess[data_, "Output", "markdown", notebook_, settings_] := data
 
-cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
+cellProcess[data_, "Output", "slide" | "slides", notebook_, settings_] := Join[data, <|"Display"->"printslide", "Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -118,7 +118,7 @@ cellProcess[data_, "Output", "slide", notebook_, settings_] := Join[data, <|"Dis
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
 
-        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        RegularExpression["src=\"\\s?([^):\"=\\>\\<]*).(png|jpeg|jpg|ttf|gif|webm|bmp|svg)\\s?\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
       }
@@ -135,7 +135,7 @@ cellProcess[data_, "Output", "slides", notebook_, settings_] := Join[data, <|"Di
           StringJoin["![](", StringReplace[i, "\n"->""], ")"]
         ],
 
-        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
+        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|jpeg|jpg|ttf|gif|webm|bmp|svg)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
           StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
         ]      
       }
