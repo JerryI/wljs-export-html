@@ -195,6 +195,12 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
             <ExtensionsJS Settings={settings}/> 
             <WebUIInitializationScript/> 
             <WLJSTransportScript Port={0}/>
+            <style>
+              main {
+                width: 100% !important;
+                display: inline-block !important; 
+              }
+            </style>
         </head>  
         <body class=" dark:bg-gray-700 bg-white"> 
           <div>
