@@ -21,6 +21,74 @@ AppExtensions`TemplateInjection["SettingsFooter"] = ImportComponent[FileNameJoin
 
 {loadSettings, storeSettings}        = ImportComponent["Frontend/Settings.wl"];
 
+MergeDirectories[source_String, target_String] := (
+  Echo[StringTemplate["Copy directory `` to ``"][source, target]];
+  If[!DirectoryQ[target], CreateDirectory[target]; ];
+  
+  With[{names = FileNames[All, source]},
+    With[{folders = Select[names, DirectoryQ[#] &], files = Select[names, !DirectoryQ[#] &]},
+
+    
+      Map[Function[folder,
+        With[{folderName = FileNameTake[folder, -1] },
+          MergeDirectories[folder, FileNameJoin[{target, folderName}]]
+        ]], folders];
+
+      Map[Function[file,
+        CopyFile[file, FileNameJoin[{target, FileNameTake[file, -1]}], OverwriteTarget->True];
+        Echo[StringTemplate["Copied `` to ``"][file, FileNameJoin[{target, FileNameTake[file, -1]}]]];
+      ], files];
+    ]
+  ];
+);
+
+extractArchive[n_Notebook] := If[MemberQ[n["Properties"], "ZIPArchive"], With[{blob = n["ZIPArchive"], dir = If[DirectoryQ[#], #, DirectoryName[#] ]& @ n["Path"]},
+    n["ZIPArchive"] = .;
+    With[{arvx = FileNameJoin[{dir, "_wljs_arxv.zip"}]},
+        BinaryWrite[arvx, BaseDecode[blob] ] // Close;
+        CreateDirectory[FileNameJoin @ {dir, "__extracted"}];
+        ExtractArchive[arvx, FileNameJoin @ {dir, "__extracted"}, "OverwriteTarget"->True];
+        DeleteFile[arvx];
+
+        With[{src = FileNames["*", FileNameJoin @ {dir, "__extracted"}] // First},
+            MergeDirectories[src, dir];
+        ];
+
+        DeleteDirectory[FileNameJoin @ {dir, "__extracted"}, DeleteContents -> True];
+    ]
+    
+] ]
+
+embedArchive[n_Notebook] := With[{
+    dir = If[DirectoryQ[#], #, DirectoryName[#] ]& @ n["Path"]
+},
+    With[{
+        intermediate = CopyDirectory[dir, FileNameJoin @ {$TemporaryDirectory, "__selected_"<>RandomWord[]}]
+    },
+        If[FailureQ[intermediate],
+            Echo["Failed to copy project files!!!"];
+            Return[$Failed];
+        ];
+
+        DeleteFile[FileNameJoin[{intermediate, FileNameTake[n["Path"] ] }] ];
+
+        With[{p = CreateArchive[intermediate, $TemporaryDirectory, "OverwriteTarget"->True]},
+            DeleteDirectory[intermediate, DeleteContents -> True];
+
+            With[{encoded = ReadByteArray[p] // BaseEncode},
+                DeleteFile[p];
+
+                n["ZIPArchive"] = encoded;
+            ]
+        ]
+    ]
+]
+
+
+EventHandler[AppExtensions`AppEvents// EventClone, {
+    "Loader:LoadNotebook" -> extractArchive
+}];
+
 
 settings = <||>;
 
@@ -31,6 +99,16 @@ generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slide
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown", "Markdown.wlx"}] ];
 
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
+
+exportSFX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+    spinner = Notifications`Spinner["Topic"->"Collecting all files", "Body"->"Please, wait"]
+},
+    EventFire[messager, spinner, True];
+    embedArchive[notebookOnLine];
+    Delete[spinner];
+
+    EventFire[messager, "Saved", "All data now is in the notebook"];
+]
 
 exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
 
@@ -469,12 +547,17 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Which format", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files"}|>];
             Then[p, Function[choise,
+
+                If[choise["Result"] === 8,
+                    exportSFX[controls, modals, messager, client, notebookOnLine, path, name, ext];
+                ];
+
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX, Null}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];
