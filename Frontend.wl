@@ -546,14 +546,14 @@ exportWLE[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
         },
             EventFire[modals, "RequestPathToSave", <|
                 "Promise"->p,
-                "Title"->"Notebook App",
-                "Ext"->"wle",
+                "Title"->"Widget",
+                "Ext"->"wlw",
                 "Client"->client
             |>];
 
             Then[p, Function[result, 
-                Module[{filename = result<>".wle"},
-                    If[filename === ".wle", filename = name<>filename];
+                Module[{filename = result<>".wlw"},
+                    If[filename === ".wlw", filename = name<>filename];
                     If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
 
                     saveNotebook[filename, notebookOnLine];
@@ -578,7 +578,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files", "WLN Executable"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files", "WLJS Widget"}|>];
             Then[p, Function[choise,
 
                 If[choise["Result"] === 8,
@@ -665,7 +665,7 @@ JerryI`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeMathematica[##] ], ""}
 ]&
 
-WLEFileQ[path_] := FileExtension[path] === "wle"
+WLEFileQ[path_] := FileExtension[path] === "wlw"
 
 JerryI`Notebook`Views`Router[any_?WLEFileQ, appevents_String] := With[{},
     Echo["WLJS Executable!"];
