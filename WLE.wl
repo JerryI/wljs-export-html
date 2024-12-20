@@ -12,6 +12,7 @@ BeginPackage["Notebook`Editor`WLEDecoder`", {
 
 Begin["`Internal`"];
 
+
 (*                                             ***                                                 *)
 (*                                         WLE Decoder                                          *)
 (*                                             ***                                                 *)
@@ -34,7 +35,7 @@ With[{
 
     spinner = Notifications`Spinner["Topic"->"Initializing an App", "Body"->"Please, wait"](*`*),
     msg = OptionValue["Messager"],
-    generated = RandomWord[]
+    generated = RandomWord[]<>"`"
 }, 
 
     options = Join[Association[List[opts] ], Association[ List[secondaryOpts] ] ]; 

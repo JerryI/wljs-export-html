@@ -536,6 +536,37 @@ exportDynamicMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook
 
 
 
+{saveNotebook, loadNotebook, renameNotebook, cloneNotebook}         = ImportComponent["Frontend/Loader.wl"];
+
+exportWLE[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+
+},
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"Notebook App",
+                "Ext"->"wle",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".wle"},
+                    If[filename === ".wle", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+
+                    saveNotebook[filename, notebookOnLine];
+
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]    
+]
+
+
+
 processRequest[controls_, modals_, messager_, client_] := With[{
     notebookOnLine = getNotebook[controls]
 },
@@ -547,7 +578,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files", "WLN Executable"}|>];
             Then[p, Function[choise,
 
                 If[choise["Result"] === 8,
@@ -557,7 +588,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX, Null}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX, Null, exportWLE}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];
@@ -574,6 +605,8 @@ AppExtensions`SidebarIcons = ImportComponent[FileNameJoin[{rootFolder, "Template
 
 (* reader of HTML and MD files *)
 {checkEncoding, decodeHTML, decodeMD, decodeMathematica} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
+
+{decodeWLE} = ImportComponent[ FileNameJoin[{rootFolder, "WLE.wl"}] ];
 
 EventHandler[AppExtensions`AppProtocol, {
     "open_html" -> Function[assoc,
@@ -628,9 +661,16 @@ NBFileQ[path_] := FileExtension[path] === "nb"
 
 JerryI`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
     Echo["Mathematica Notebook!"];
-    Echo[decodeMathematica[##] ];
 
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeMathematica[##] ], ""}
+]&
+
+WLEFileQ[path_] := FileExtension[path] === "wle"
+
+JerryI`Notebook`Views`Router[any_?WLEFileQ, appevents_String] := With[{},
+    Echo["WLJS Executable!"];
+
+    {LoaderComponent[##, "Path"->any, "Decoder"->decodeWLE[##] ], ""}
 ]&
 
 

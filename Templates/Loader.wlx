@@ -12,7 +12,12 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
               Pause[1];
               Echo[result];
               (*/*EventFire[spinner["Promise"], Resolve, True];*/*)
-              WebUILocation[ StringJoin["/", URLEncode[ result ] ], client ] // Echo;
+              If[StringQ[result],
+                WebUILocation[ StringJoin["/", URLEncode[ result ] ], client ] // Echo;
+              ,
+                WebUILocation[ StringJoin[result[[1]], URLEncode[ result[[2]] ] ], client ] // Echo;
+              ]
+              
 
             ]];
 
