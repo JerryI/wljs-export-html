@@ -80,7 +80,7 @@ With[{
                         With[{win = WindowObj["Notebook" -> notebook, "Data" -> last["Data"], "Ref" -> last["Hash"] ]},
                             Echo["project >> sending global event"];
                             EventFire[notebook, "OnWindowCreate", <|"Window"->win, "Client"->options["Client"]|>];
-                            EventHadler[win // EventClone, {"Ready" -> Function[Null,
+                            EventHandler[win["Hash"] // EventClone, {"Ready" -> Function[Null,
                                 Kernel`Init[kernel,
 
                                     $ContextPath = Append[$ContextPath /. generated -> Nothing, "Global`"];
