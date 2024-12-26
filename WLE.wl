@@ -86,7 +86,8 @@ With[{
                                     $ContextPath = Append[$ContextPath /. generated -> Nothing, "Global`"];
                                     $Context = "Global`";
                                 ];                            
-                            ]}];
+                            ]
+                            }];
 
                             EventFire[promise, Resolve, {StringJoin["/window?id=", win["Hash"] ], ""} ];
                         
