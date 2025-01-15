@@ -1,6 +1,6 @@
 
 
-Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = OptionValue["Decoder"], Color = If[StringQ[#], #, "{Color}"]& @ (OptionValue["Parameters"]["AccentColor"]), Path = OptionValue["Path"], Messager = OptionValue["Messanger"], Controls = OptionValue["Controls"]},  
+Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = OptionValue["Decoder"], Color = If[StringQ[#], #, "{Color}"]& @ (OptionValue["Parameters"]["AccentColor"]), Path = OptionValue["Path"], Messager = OptionValue["Messanger"], Controls = OptionValue["Controls"], iframeQ = OptionValue["IframeQ"]},  
   EventHandler[EventChannel, Function[Null,
     With[{client = Global`$Client(*`*)},
     Echo[client];
@@ -13,7 +13,11 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
               Echo[result];
               (*/*EventFire[spinner["Promise"], Resolve, True];*/*)
               If[StringQ[result],
-                WebUILocation[ StringJoin["/", URLEncode[ result ] ], client ] // Echo;
+                If[iframeQ, 
+                  WebUILocation[ StringJoin["/iframe/", URLEncode[ result ] ], client ] // Echo;
+                ,
+                  WebUILocation[ StringJoin["/", URLEncode[ result ] ], client ] // Echo;
+                ]
               ,
                 WebUILocation[ StringJoin[result[[1]], URLEncode[ result[[2]] ] ], client ] // Echo;
               ]
@@ -33,6 +37,6 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
   ]
 ]
 
-Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "Controls" -> "", "Client"->Null};
+Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "IframeQ"->False, "Controls" -> "", "Client"->Null};
 
 Component
