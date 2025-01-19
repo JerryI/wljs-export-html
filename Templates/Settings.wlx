@@ -25,7 +25,7 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
         "ExportHTMLNotebookStore" -> True,
         "ExportHTMLImages" -> True,
         "ExportHTMLUseCDN" -> False,
-        "ExportHTMLExclude" -> {"wljs-plotly", "wljs-mermaid-support", "wljs-sharedlib-three"}
+        "ExportHTMLExclude" -> {"wljs-plotly", "wljs-mermaid-support"}
     |>, OptionValue["Settings"]]
 },
     EventHandler[update, {
