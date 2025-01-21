@@ -253,19 +253,24 @@ convert[Cell[t: TextData[data_List], "Text", ___], notebook_, kernel_] := (
   CellObj["Data"->stringTest[StringJoin@@(ToString /@ toStringFormExperimental /@ data)], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 )
 
-convert[Cell[text_String, "Subsubsection"], notebook_, kernel_] := (
+convert[Cell[text_String, "Subsubsection", ___], notebook_, kernel_] := (
   CellObj["Data"->StringJoin[".md\n#### ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
   CellObj["Data"->StringJoin["#### ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 )
 
-convert[Cell[text_String, "Subsection"], notebook_, kernel_] := (
+convert[Cell[text_String, "Subsection", ___], notebook_, kernel_] := (
   CellObj["Data"->StringJoin[".md\n### ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
   CellObj["Data"->StringJoin["### ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 )
 
-convert[Cell[text_String, "Section"], notebook_, kernel_] := (
+convert[Cell[text_String, "Section", ___], notebook_, kernel_] := (
   CellObj["Data"->StringJoin[".md\n## ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
   CellObj["Data"->StringJoin["## ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
+)
+
+convert[Cell[text_String, "Title", ___], notebook_, kernel_] := (
+  CellObj["Data"->StringJoin[".md\n# ", text], "Type"->"Input", "Notebook"->notebook , "Props"-><|"Hidden"->True|>];
+  CellObj["Data"->StringJoin["# ", text], "Display"->"markdown", "Type"->"Output", "Notebook"->notebook ];
 )
 
 
