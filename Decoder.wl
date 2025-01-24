@@ -169,7 +169,7 @@ With[{
     ];    
 
     Echo["SAVING////////"];
-    Then[saveNotebook[notebook], Function[Null,
+    Then[saveNotebook[notebook["Path"], notebook], Function[Null,
       EventFire[spinner["Promise"], Resolve, True];
       EventFire[promise, Resolve, notebook["Path"] ];
     ] ];
@@ -379,7 +379,7 @@ With[{
                     } &/@ nb[[1]], Function[Null,
       
                       Echo["SAVING////////"];
-                      Then[saveNotebook[notebook], Function[Null,
+                      Then[saveNotebook[notebook["Path"], notebook], Function[Null,
                         EventFire[promise, Resolve, notebook["Path"] ];
                       ] ];
                     ] ]; 
