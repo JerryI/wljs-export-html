@@ -92,11 +92,44 @@ Options[decodeHTML] = {"Messager"->"", "Client"->Null}
 
 lang["mathematica"] := ""
 lang["wolfram"] := ""
+lang["wl"] := ""
 lang["js"] := ".js\n"
 lang["javascript"] := ".js\n"
 lang["jsx"] := ".wlx\n"
+lang["html"] := ".html\n"
+lang["reveal"] := ".slide\n"
+lang["bash"] := ".sh\n"
+lang["shell"] := ".sh\n"
+lang["mermaid"] := ".mermaid\n"
+lang["sh"] := ".sh\n"
+lang["revealjs"] := ".slide\n"
 lang["markdown"] := ".md\n"
 lang[any_String] := StringJoin[".", any, "\n"]
+
+codeBlock;
+codeBlock["mermaid", rest_] := codeBlockInPlace["mermaid", rest] 
+
+fixImages[s_String] := With[{},
+  StringReplace[s, {
+    RegularExpression["!(\\[[\\w|\\d|-| |_]*\\])\\(([^\\(
+)\\[\\]]*)\\)"] :> With[{
+    label = "$1",
+    url = "$2"
+},
+      If[StringTake[url, 1] == "/",
+        StringTemplate["![``](``)"][label, url]
+      ,
+        If[StringTake[url, Min[4, StringLength[url] ] ] == "http",
+          StringTemplate["![``](``)"][label, url]
+        ,
+          StringTemplate["![``](/``)"][label, url ]
+        ]
+        
+      ]
+    ]
+  
+  }]
+]
 
 decodeMD[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
 With[{
@@ -146,15 +179,31 @@ With[{
                 "Notebook" -> notebook
               ],
 
-            String,
+            codeBlockInPlace,
               CellObj[
-                "Data" -> StringJoin[".md\n", item], 
+                "Data" -> StringJoin[lang[item[[1]] // StringTrim], item[[2]]], 
                 "Type" -> "Input", 
                 "Notebook" -> notebook, 
                 "Props" -> <|"Hidden" -> True|>
               ];
               CellObj[
-                "Data" -> item, 
+                "Data" -> item[[2]], 
+                "Type" -> "Output", 
+                "Display" -> "mermaid", 
+                "Notebook" -> notebook
+              ];
+            ,
+
+
+            String,
+              CellObj[
+                "Data" -> StringJoin[".md\n", fixImages @ item], 
+                "Type" -> "Input", 
+                "Notebook" -> notebook, 
+                "Props" -> <|"Hidden" -> True|>
+              ];
+              CellObj[
+                "Data" -> fixImages[item], 
                 "Type" -> "Output", 
                 "Display" -> "markdown", 
                 "Notebook" -> notebook
@@ -173,6 +222,8 @@ With[{
 
       EventFire[spinner["Promise"], Resolve, True];
       EventFire[promise, Resolve, notebook["Path"] ];
+      Delete /@ notebook["Cells"];
+      Delete[notebook];
     ] ];
 
    promise 
@@ -382,6 +433,8 @@ With[{
                       Echo["SAVING////////"];
                       Then[saveNotebook[notebook["Path"], notebook, "NoCache"->True], Function[Null,
                         EventFire[promise, Resolve, notebook["Path"] ];
+                        Delete /@ notebook["Cells"];
+                        Delete[notebook];
                       ] ];
                     ] ]; 
 
