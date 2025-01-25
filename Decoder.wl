@@ -245,6 +245,10 @@ convert[Cell[BoxData[boxes_List], "Input", ___], notebook_, kernel_] := With[{p 
   p
 ]
 
+convert[Cell[input_String, "Input", ___], notebook_, kernel_] := With[{},
+  CellObj["Data"->processString[input ], "Type"->"Input", "Notebook"->notebook ];
+]
+
 convert[Cell[BoxData[boxes_], "Input", ___], notebook_, kernel_] := With[{p = Promise[]},
   Then[evaluateInPlace[StringRiffle[ToString[# /. {RowBox->RowBoxFlatten}] &/@ {boxes}, ""], kernel], Function[reply,
     CellObj["Data"->processString[reply["Data"] ], "Type"->"Input", "Notebook"->notebook ];

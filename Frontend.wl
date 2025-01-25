@@ -98,6 +98,8 @@ generateDynamicNotebook= ImportComponent[FileNameJoin[{rootFolder, "Templates", 
 generateSlides   = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Slides", "Static.wlx"}] ];
 generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markdown", "Markdown.wlx"}] ];
 
+generateNB = Get[FileNameJoin[{rootFolder, "Templates", "Mathematica", "Mathematica.wl"}] ];
+
 getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
 
 exportSFX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
@@ -141,6 +143,36 @@ exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, pa
                     ];
 
                     Export[filename, generateSlides["Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name] // ToStringRiffle, "Text"];
+                    EventFire[messager, "Saved", "Exported to "<>filename];
+                ];
+            ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
+            
+        ]
+    ]
+]
+
+exportNB[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+
+},
+    With[{
+
+    },
+        
+        With[{
+            p = Promise[]
+        },
+            EventFire[modals, "RequestPathToSave", <|
+                "Promise"->p,
+                "Title"->"Mathematica Notebook",
+                "Ext"->"nb",
+                "Client"->client
+            |>];
+
+            Then[p, Function[result, 
+                Module[{filename = result<>".nb"},
+                    If[filename === ".nb", filename = name<>filename];
+                    If[DirectoryName[filename] === "", filename = FileNameJoin[{path, filename}] ];
+                    generateNB[filename, "Root"->rootFolder, "Notebook" -> notebookOnLine, "Title"->name];
                     EventFire[messager, "Saved", "Exported to "<>filename];
                 ];
             ], Function[result, Echo["!!!R!!"]; Echo[result] ] ];
@@ -578,7 +610,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
         With[{
             p = Promise[]
         }, 
-            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (In dev)", "Dynamic MDX (In dev)", "Embed project files", "WLJS Widget"}|>];
+            EventFire[modals, "Select", <|"Client"->client, "Promise"->p, "Title"->"Options", "Options"->{"Static HTML","Dynamic HTML (experimental)", "Markdown", "Only slides", "Only figures", "Static MDX (testing)", "Dynamic MDX (testing)", "Embed project files", "WLJS Widget", "Mathematica (experimental)"}|>];
             Then[p, Function[choise,
 
                 If[choise["Result"] === 8,
@@ -588,7 +620,7 @@ processRequest[controls_, modals_, messager_, client_] := With[{
                 EventFire[messager, Notifications`NotificationMessage["Info"], "Collecting static data"];
                 With[{tt = EventFire[notebookOnLine, "OnBeforeSave", <|"Client" -> client|>]},
                     Then[tt, Function[Null,
-                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX, Null, exportWLE}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
+                        {exportHTML, exportDynamicHTML, exportMarkdown, exportSlides, exportFigures, exportMDX, exportDynamicMDX, Null, exportWLE, exportNB}[[choise["Result"] ]][controls, modals, messager, client, notebookOnLine, path, name, ext];
                     ] ] 
                 ];
             ] ];
@@ -606,7 +638,7 @@ AppExtensions`SidebarIcons = ImportComponent[FileNameJoin[{rootFolder, "Template
 (* reader of HTML and MD files *)
 {checkEncoding, decodeHTML, decodeMD, decodeMathematica} = ImportComponent[ FileNameJoin[{rootFolder, "Decoder.wl"}] ];
 
-{decodeWLE} = ImportComponent[ FileNameJoin[{rootFolder, "WLE.wl"}] ];
+{decodeWLE} = Get[ FileNameJoin[{rootFolder, "Templates", "Widget", "WLE.wl"}] ];
 
 EventHandler[AppExtensions`AppProtocol, {
     "open_html" -> Function[assoc,
