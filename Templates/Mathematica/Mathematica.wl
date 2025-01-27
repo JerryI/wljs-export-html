@@ -28,6 +28,7 @@ transformHeadings[str_] := Which[
     TextCell[StringDrop[str, 2], "Subsubsection"],
 
     True,
+    Print[str];
     str                
 ]
 
@@ -81,7 +82,9 @@ SetAttributes[convertToBoxes, HoldAllComplete];
 SetAttributes[convertToBoxes, Listable];
 
 convertCell[cell_] := ToExpression[cell["Data"], InputForm, convertToBoxes]  /; (language[cell["Data"] ] === "wolfram" && InputCellQ[cell])
-convertCell[cell_] := Cell[ dropFirstLine[ cell["Data"] ], "Text" ] /; (language[cell["Data"] ] =!= "wolfram" && InputCellQ[cell])
+convertCell[cell_] := Cell[ dropFirstLine[ cell["Data"] ], "Code" ] /; (language[cell["Data"] ] =!= "wolfram" && language[cell["Data"] ] =!= "markdown" && InputCellQ[cell])
+
+convertCell[_] := Nothing
 
 encode[path_, OptionsPattern[] ] := With[{
     notebook = OptionValue["Notebook"]
