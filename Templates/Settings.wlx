@@ -25,6 +25,7 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
         "ExportHTMLNotebookStore" -> True,
         "ExportHTMLImages" -> True,
         "ExportHTMLUseCDN" -> False,
+        "ExportHTMLAutomaticDark" -> True,
         "ExportHTMLExclude" -> {"wljs-plotly", "wljs-mermaid-support"}
     |>, OptionValue["Settings"]]
 },
@@ -39,6 +40,10 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
         
         "ExportHTMLImages" -> Function[state,
             onsave[<|"ExportHTMLImages" -> state|>];
+        ],
+
+        "ExportHTMLAutomaticDark" -> Function[state,
+            onsave[<|"ExportHTMLAutomaticDark" -> state|>];
         ]
     }];
 
@@ -73,6 +78,10 @@ Component[OptionsPattern[]] := Module[{tempBuffer}, With[{
                     <StringRiffle>
                         <Checkbox Label={"Use CDN"} Event={update} Topic={"ExportHTMLUseCDN"} Description={"Do not include all packages to an exported file, but use CDN service. It reduces the file size, but makes it internet dependent."} Checked={initialValues["ExportHTMLUseCDN"]}/>
                     </StringRiffle>            
+                    <StringRiffle>
+                        <Checkbox Label={"Automatic dark mode"} Event={update} Topic={"ExportHTMLAutomaticDark"} Description={"Enables hue shift and colors inversion based on user's OS preferences"} Checked={initialValues["ExportHTMLAutomaticDark"]}/>
+                    </StringRiffle> 
+                    
                 </div>
                 <span class="dark:text-gray-400">Include</span>
                 <div class="block my-2 py-2">

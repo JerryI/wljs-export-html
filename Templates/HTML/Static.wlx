@@ -19,6 +19,9 @@ Table[
 
 existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
 
+existsOrTrue[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], True]
+
+
 getRepo[Rule[_, url_String]] := StringReplace[url, "https://github.com/"~~s_:>s]
 getBranch[Rule[_, url_String]] := "master"
 
@@ -210,7 +213,7 @@ GetTitle[Rule["Notebook", notebook_]] := With[{},
   ]
 ]
 
-Component[OptionsPattern[]] := Module[{settings}, With[{
+Component[OptionsPattern[]] := Module[{settings, mainClass, bodyClass}, With[{
   Title = OptionValue["Title"],
   notebook = OptionValue["Notebook"],
   ExtensionTemplates = OptionValue["ExtensionTemplates"],
@@ -220,6 +223,9 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
 },
 
     loadSettings[settings];
+
+    mainClass = If[existsOrTrue[settings, "ExportHTMLAutomaticDark"], "dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180", ""];
+    bodyClass = If[existsOrTrue[settings, "ExportHTMLAutomaticDark"], "dark:bg-black", ""];
 
     { "<!DOCTYPE html>", 
     <html class="h-full" os="Browser"> 
@@ -249,14 +255,14 @@ Component[OptionsPattern[]] := Module[{settings}, With[{
               }
             </style>
         </head>  
-        <body class="h-full dark:bg-black bg-white"> 
+        <body class="h-full {bodyClass} bg-white"> 
           <div>
             <div class="px-2" id="frame">
               <div class="h-full block relative" style="
                 width: calc(100vw - 0.5rem);
                 overflow-x: hidden;
               ">
-                <main class="grow dark:invert dark:contrast-75 dark:brightness-5 dark:hue-rotate-180 bg-white" >
+                <main class="grow {mainClass} bg-white" >
                     <div id="ceo-placeholder" class="px-3 pr-4 py-2 sm:px-2 sm:pr-3 ml-4 md:px-4 md:pr-5 overflow-y-auto absolute grow bg-white" style="margin-top: 1rem; height: 100 vh; width:100%; overflow: hidden;">
                         <CEOCells Notebook={notebook}/>
                     </div>
