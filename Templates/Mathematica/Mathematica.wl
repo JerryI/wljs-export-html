@@ -16,19 +16,18 @@ Begin["`Internal`"];
 
 transformHeadings[str_] := Which[
     StringMatchQ[str, "# "~~__],
-    TextCell[StringDrop[str, 2], "Title"],
+    Cell[StringDrop[str, 2], "Title"],
 
     StringMatchQ[str, "## "~~__],
-    TextCell[StringDrop[str, 3], "Section"],
+    Cell[StringDrop[str, 3], "Section"],
 
     StringMatchQ[str, "#### "~~__],
-    TextCell[StringDrop[str, 4], "Subsection"],
+    Cell[StringDrop[str, 4], "Subsection"],
 
     StringMatchQ[str, "##### "~~__],
-    TextCell[StringDrop[str, 2], "Subsubsection"],
+    Cell[StringDrop[str, 5], "Subsubsection"],
 
     True,
-    Print[str];
     str                
 ]
 
@@ -42,10 +41,15 @@ dropFirstLine[s_String] := With[{l = StringSplit[s, "\n"]},
 
 mergeMarkdown[list_List] := Replace[SequenceReplace[list, {s1_String, s2__String} :> StringRiffle[{s1,s2}, "\n"] ], s_String :> Cell[s, "Text"], 1];
 
-splitMarkdown[cell_] := mergeMarkdown[transformHeadings /@ StringSplit[cell["Data"], "\n"] ]
+splitMarkdown[cell_CellObj] := mergeMarkdown[transformHeadings /@ StringSplit[cell["Data"], "\n"] ]
 
-convertCell[cell_] := splitMarkdown[cell] /; ((cell["Display"] === "markdown") && OutputCellQ[cell])
-convertCell[cell_] := Nothing /; ((cell["Display"] =!= "markdown") && OutputCellQ[cell])
+OutputMarkdownQ[cell_CellObj] := (cell["Display"] === "markdown") && OutputCellQ[cell];
+InputWolframQ[cell_CellObj] := InputCellQ[cell] && (language[cell["Data"] ] === "wolfram");
+InputCodeCellQ[cell_CellObj] := InputCellQ[cell] && (language[cell["Data"] ] =!= "markdown" && language[cell["Data"] ] =!= "wolfram");
+
+
+convertCell[cell_CellObj?OutputMarkdownQ] := splitMarkdown[cell];
+convertCell[cell_CellObj] := Nothing;
 
 language[s_String] := Which[
     StringMatchQ[s, ".md\n"~~__],
@@ -81,8 +85,8 @@ convertToBoxes[s__] := convertToBoxes /@ Unevaluated[{s}]
 SetAttributes[convertToBoxes, HoldAllComplete];
 SetAttributes[convertToBoxes, Listable];
 
-convertCell[cell_] := ToExpression[cell["Data"], InputForm, convertToBoxes]  /; (language[cell["Data"] ] === "wolfram" && InputCellQ[cell])
-convertCell[cell_] := Cell[ dropFirstLine[ cell["Data"] ], "Code" ] /; (language[cell["Data"] ] =!= "wolfram" && language[cell["Data"] ] =!= "markdown" && InputCellQ[cell])
+convertCell[cell_CellObj?InputWolframQ] := ToExpression[cell["Data"], InputForm, convertToBoxes]  
+convertCell[cell_CellObj?InputCodeCellQ] := Cell[ dropFirstLine[ cell["Data"] ], "CodeText" ] 
 
 convertCell[_] := Nothing
 
