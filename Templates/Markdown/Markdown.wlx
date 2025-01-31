@@ -107,7 +107,7 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   With[{cells = Map[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
-              With[{serialized = CellObj`Serialize[cell](*`*)},
+              With[{serialized = cell`Serialize[cell](*`*)},
                 cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings]["Data"]
               ]
           ]

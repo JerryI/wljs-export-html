@@ -11,9 +11,9 @@ Global`UINotebook (*`*);
 pmIncludes[param_, blacklist_List] := 
 Table[ 
     Table[ 
-      FileNameJoin[{WLJS`PM`Packages[i, "name"], StringSplit[j, "/"]} // Flatten]
-    , {j, {WLJS`PM`Packages[i, "wljs-meta", param]} // Flatten} ]
-, {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[blacklist, #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], param])&]}] // Flatten;
+      FileNameJoin[{WLJSPackages`Packages[i, "name"], StringSplit[j, "/"]} // Flatten]
+    , {j, {WLJSPackages`Packages[i, "wljs-meta", param]} // Flatten} ]
+, {i, Select[WLJSPackages`Packages // Keys, (!MemberQ[blacklist, #] && WLJSPackages`Packages[#, "enabled"] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], param])&]}] // Flatten;
 
 existsOrEmpty[settings_, field_] := If[KeyExistsQ[settings, field], settings[field], {}]
 
@@ -32,10 +32,10 @@ ExtensionsJS[Rule["Settings", settings_]] := If[settings["ExportHTMLUseCDN"] ===
 
   ]& /@ Flatten[Table[
       Table[
-          Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
-          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
-      , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
-  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]]) // ToStringRiffle
+          Echo[<|"key"->WLJSPackages`Packages[i, "key"], "path"->j, "original"->i|>];
+          <|"key"->WLJSPackages`Packages[i, "key"], "path"->j|>
+      , {j, {WLJSPackages`Packages[i, "wljs-meta", "js"]} // Flatten}]
+  , {i, Select[WLJSPackages`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJSPackages`Packages[#, "enabled"] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], "minjs"])&]} ]]) // ToStringRiffle
 ,
   With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
     <script type="module">
@@ -51,9 +51,9 @@ ExtensionsStyles[Rule["Settings", settings_]] := If[settings["ExportHTMLUseCDN"]
     <link rel="stylesheet" href="{url}"/>
   ]& /@ Flatten[Table[
       Table[
-          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
-      , {j, {WLJS`PM`Packages[i, "wljs-meta", "styles"]} // Flatten}]
-  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "styles"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]] )// ToStringRiffle
+          <|"key"->WLJSPackages`Packages[i, "key"], "path"->j|>
+      , {j, {WLJSPackages`Packages[i, "wljs-meta", "styles"]} // Flatten}]
+  , {i, Select[WLJSPackages`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJSPackages`Packages[#, "enabled"] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], "styles"] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], "minjs"])&]} ]] )// ToStringRiffle
 ,
   With[{Data = Import[FileNameJoin[{"wljs_packages", #}], "Text"]},
     <style>
@@ -147,7 +147,7 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   With[{cells = Map[
       Function[cell,
           With[{list = #["Hash"] &/@ (cell["Notebook","Cells"])},
-              With[{serialized = CellObj`Serialize[cell](*`*)},
+              With[{serialized = cell`Serialize[cell](*`*)},
                 <|"Data"->cellProcess[serialized, serialized["Type"], serialized["Display"], notebook, settings], "Template"->CellGenerator[cellPreProcess[cell], Null, <||>]|>
               ]
           ]

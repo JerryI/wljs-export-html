@@ -1,14 +1,17 @@
-BeginPackage["Notebook`Editor`ExportNotebook`", {
-    "JerryI`Notebook`", 
+BeginPackage["CoffeeLiqueur`Extensions`ExportImport`", {
     "JerryI`Misc`Events`",
     "JerryI`Misc`Events`Promise`",
     "JerryI`WLX`",
     "JerryI`WLX`Importer`",
     "JerryI`WLX`WebUI`", 
-    "JerryI`Notebook`AppExtensions`",
-    "JerryI`Misc`WLJS`Transport`",
-    "JerryI`WLJSPM`"
+    "JerryI`Misc`WLJS`Transport`"
 }]
+
+Needs["CoffeeLiqueur`ExtensionManager`" -> "WLJSPackages`"];
+Needs["CoffeeLiqueur`Notebook`AppExtensions`" -> "AppExtensions`"];
+
+Needs["CoffeeLiqueur`Notebook`Cells`" -> "cell`"];
+Needs["CoffeeLiqueur`Notebook`" -> "nb`"];
 
 Begin["`Internal`"]
 
@@ -42,7 +45,7 @@ MergeDirectories[source_String, target_String] := (
   ];
 );
 
-extractArchive[n_Notebook] := If[MemberQ[n["Properties"], "ZIPArchive"], With[{blob = n["ZIPArchive"], dir = If[DirectoryQ[#], #, DirectoryName[#] ]& @ n["Path"]},
+extractArchive[n_nb`NotebookObj] := If[MemberQ[n["Properties"], "ZIPArchive"], With[{blob = n["ZIPArchive"], dir = If[DirectoryQ[#], #, DirectoryName[#] ]& @ n["Path"]},
     n["ZIPArchive"] = .;
     With[{arvx = FileNameJoin[{dir, "_wljs_arxv.zip"}]},
         BinaryWrite[arvx, BaseDecode[blob] ] // Close;
@@ -59,7 +62,7 @@ extractArchive[n_Notebook] := If[MemberQ[n["Properties"], "ZIPArchive"], With[{b
     
 ] ]
 
-embedArchive[n_Notebook] := With[{
+embedArchive[n_nb`NotebookObj] := With[{
     dir = If[DirectoryQ[#], #, DirectoryName[#] ]& @ n["Path"]
 },
     With[{
@@ -100,9 +103,9 @@ generateMarkdown = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Markd
 
 generateNB = Get[FileNameJoin[{rootFolder, "Templates", "Mathematica", "Mathematica.wl"}] ];
 
-getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_Notebook, ___} :> n};
+getNotebook[controls_] := EventFire[controls, "NotebookQ", True] /. {{___, n_nb`NotebookObj, ___} :> n};
 
-exportSFX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportSFX[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
     spinner = Notifications`Spinner["Topic"->"Collecting all files", "Body"->"Please, wait"]
 },
     EventFire[messager, spinner, True];
@@ -112,7 +115,7 @@ exportSFX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
     EventFire[messager, "Saved", "All data now is in the notebook"];
 ]
 
-exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportSlides[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -151,7 +154,7 @@ exportSlides[controls_, modals_, messager_, client_, notebookOnLine_Notebook, pa
     ]
 ]
 
-exportNB[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportNB[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -181,7 +184,7 @@ exportNB[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
     ]
 ]
 
-exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportMarkdown[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -216,7 +219,7 @@ figuresCodeModal = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Modal
 {figuresTemplate, figuresHead} = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Figures", "Template.wlx"}] ];
 
 
-exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportFigures[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
     objects = notebookOnLine["Objects"],
     sym     = notebookOnLine["Symbols"]
 },
@@ -301,13 +304,13 @@ exportFigures[controls_, modals_, messager_, client_, notebookOnLine_Notebook, p
 ]
 
 
-Notebook`Editor`ExportNotebook`Internal`Sniffer;
-Notebook`Editor`ExportNotebook`Internal`Sampler;
+CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer;
+CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler;
 
 analyser = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Analyser.wlx"}] ];
 sampler = ImportComponent[FileNameJoin[{rootFolder, "Templates", "Analyser", "Sampler.wlx"}] ];
 
-sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_, cbk_] := Module[{
+sampling[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_, cbk_] := Module[{
     notification
 }, With[{
     channel = CreateUUID[]
@@ -362,7 +365,7 @@ sampling[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_,
     
 ] ]
 
-exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
+exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
     sniffer = CreateUUID[]
 },
     If[notebookOnLine["Evaluator"]["Kernel"]["State"] =!= "Initialized", 
@@ -418,7 +421,7 @@ exportDynamicHTML[controls_, modals_, messager_, client_, notebookOnLine_Noteboo
 ] ]
 
 
-exportHTML[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportHTML[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
 
 },
     With[{
@@ -459,7 +462,7 @@ getRepo[Rule[_, Rule[url_String, _]]] := StringReplace[url, "https://github.com/
 getBranch[Rule[_, Rule[url_String, branch_String]]] := branch
 
 
-exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_, dynamicQ_:False, compressed_:Null] := With[{
+exportMDX[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_, dynamicQ_:False, compressed_:Null] := With[{
 
 },
     With[{
@@ -510,10 +513,10 @@ exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
 
   ]& /@ Flatten[Table[
       Table[
-          Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
-          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
-      , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
-  , {i, Select[WLJS`PM`Packages // Keys, (WLJS`PM`Packages[#, "enabled"] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "js"])&]} ] ]) // ToStringRiffle
+          Echo[<|"key"->WLJSPackages`Packages[i, "key"], "path"->j, "original"->i|>];
+          <|"key"->WLJSPackages`Packages[i, "key"], "path"->j|>
+      , {j, {WLJSPackages`Packages[i, "wljs-meta", "js"]} // Flatten}]
+  , {i, Select[WLJSPackages`Packages // Keys, (WLJSPackages`Packages[#, "enabled"] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], "js"])&]} ] ]) // ToStringRiffle
                     },
                         EventFire[modals, "CustomModal", <|
                             "Promise"->Null,
@@ -532,7 +535,7 @@ exportMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_
 ]
 
 
-exportDynamicMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
+exportDynamicMDX[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := Module[{notification, dump, raw, groups}, With[{
     sniffer = CreateUUID[]
 },
     If[notebookOnLine["Evaluator"]["Kernel"]["State"] =!= "Initialized", 
@@ -570,7 +573,7 @@ exportDynamicMDX[controls_, modals_, messager_, client_, notebookOnLine_Notebook
 
 {saveNotebook, loadNotebook, renameNotebook, cloneNotebook}         = ImportComponent["Frontend/Loader.wl"];
 
-exportWLE[controls_, modals_, messager_, client_, notebookOnLine_Notebook, path_, name_, ext_] := With[{
+exportWLE[controls_, modals_, messager_, client_, notebookOnLine_nb`NotebookObj, path_, name_, ext_] := With[{
 
 },
         With[{
@@ -679,19 +682,19 @@ Echo["DecoderLoaded!"];
 Echo[checkEncoding];
 
 HTMLFileQ[path_] := If[FileExtension[path] === "html", checkEncoding[path], False ];
-JerryI`Notebook`Views`Router[any_?HTMLFileQ, appevents_String] := With[{},
+CoffeeLiqueur`Notebook`Views`Router[any_?HTMLFileQ, appevents_String] := With[{},
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeHTML], ""}&
 ]
 
 MDFileQ[path_] := FileExtension[path] === "md"
 
-JerryI`Notebook`Views`Router[any_?MDFileQ, appevents_String] := With[{},
+CoffeeLiqueur`Notebook`Views`Router[any_?MDFileQ, appevents_String] := With[{},
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeMD], ""}&
 ]
 
 NBFileQ[path_] := FileExtension[path] === "nb"
 
-JerryI`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
+CoffeeLiqueur`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
     Echo["Mathematica Notebook!"];
 
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeMathematica[##] ], ""}
@@ -699,7 +702,7 @@ JerryI`Notebook`Views`Router[any_?NBFileQ, appevents_String] := With[{},
 
 WLEFileQ[path_] := FileExtension[path] === "wlw"
 
-JerryI`Notebook`Views`Router[any_?WLEFileQ, appevents_String] := With[{},
+CoffeeLiqueur`Notebook`Views`Router[any_?WLEFileQ, appevents_String] := With[{},
     Echo["WLJS Executable!"];
 
     {LoaderComponent[##, "Path"->any, "Decoder"->decodeWLE[##] ], ""}

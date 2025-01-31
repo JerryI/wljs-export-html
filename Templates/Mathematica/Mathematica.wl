@@ -1,16 +1,20 @@
-BeginPackage["Notebook`Editor`MathematicaEncoder`", {
-    "JerryI`Notebook`", 
-    "JerryI`Notebook`Windows`",
+BeginPackage["CoffeeLiqueur`Extensions`ExportImport`Mathematica`", {
+
     "JerryI`Misc`Events`",
     "JerryI`Misc`Async`",
     "JerryI`WLX`Importer`",
     "JerryI`Misc`Events`Promise`",
-    "JerryI`Notebook`Transactions`", 
-    "JerryI`Notebook`Kernel`",
-    "JerryI`Notebook`LocalKernel`"
+    "CoffeeLiqueur`Notebook`Transactions`"
 }];
 
+
 Begin["`Internal`"];
+
+Needs["CoffeeLiqueur`Notebook`Kernel`" -> "GenericKernel`"];
+Needs["CoffeeLiqueur`Notebook`LocalKernel`" -> "LocalKernel`"]
+
+Needs["CoffeeLiqueur`Notebook`Cells`" -> "cell`"];
+Needs["CoffeeLiqueur`Notebook`" -> "nb`"];
 
 (* better use this https://community.wolfram.com/groups/-/m/t/2142852 *)
 
@@ -41,15 +45,15 @@ dropFirstLine[s_String] := With[{l = StringSplit[s, "\n"]},
 
 mergeMarkdown[list_List] := Replace[SequenceReplace[list, {s1_String, s2__String} :> StringRiffle[{s1,s2}, "\n"] ], s_String :> Cell[s, "Text"], 1];
 
-splitMarkdown[cell_CellObj] := mergeMarkdown[transformHeadings /@ StringSplit[cell["Data"], "\n"] ]
+splitMarkdown[cell_cell`CellObj] := mergeMarkdown[transformHeadings /@ StringSplit[cell["Data"], "\n"] ]
 
-OutputMarkdownQ[cell_CellObj] := (cell["Display"] === "markdown") && OutputCellQ[cell];
-InputWolframQ[cell_CellObj] := InputCellQ[cell] && (language[cell["Data"] ] === "wolfram");
-InputCodeCellQ[cell_CellObj] := InputCellQ[cell] && (language[cell["Data"] ] =!= "markdown" && language[cell["Data"] ] =!= "wolfram");
+OutputMarkdownQ[cell_cell`CellObj] := (cell["Display"] === "markdown") && cell`OutputCellQ[cell];
+InputWolframQ[cell_cell`CellObj] := cell`InputCellQ[cell] && (language[cell["Data"] ] === "wolfram");
+InputCodeCellQ[cell_cell`CellObj] := cell`InputCellQ[cell] && (language[cell["Data"] ] =!= "markdown" && language[cell["Data"] ] =!= "wolfram");
 
 
-convertCell[cell_CellObj?OutputMarkdownQ] := splitMarkdown[cell];
-convertCell[cell_CellObj] := Nothing;
+convertCell[cell_cell`CellObj?OutputMarkdownQ] := splitMarkdown[cell];
+convertCell[cell_cell`CellObj] := Nothing;
 
 language[s_String] := Which[
     StringMatchQ[s, ".md\n"~~__],
@@ -85,8 +89,8 @@ convertToBoxes[s__] := convertToBoxes /@ Unevaluated[{s}]
 SetAttributes[convertToBoxes, HoldAllComplete];
 SetAttributes[convertToBoxes, Listable];
 
-convertCell[cell_CellObj?InputWolframQ] := ToExpression[cell["Data"], InputForm, convertToBoxes]  
-convertCell[cell_CellObj?InputCodeCellQ] := Cell[ dropFirstLine[ cell["Data"] ], "CodeText" ] 
+convertCell[cell_cell`CellObj?InputWolframQ] := ToExpression[cell["Data"], InputForm, convertToBoxes]  
+convertCell[cell_cell`CellObj?InputCodeCellQ] := Cell[ dropFirstLine[ cell["Data"] ], "CodeText" ] 
 
 convertCell[_] := Nothing
 
@@ -103,4 +107,4 @@ Options[encode] = {"Root"->"", "Notebook" -> "", "Title"->""}
 End[];
 EndPackage[];
 
-Notebook`Editor`MathematicaEncoder`Internal`encode
+CoffeeLiqueur`Extensions`ExportImport`Mathematica`Internal`encode

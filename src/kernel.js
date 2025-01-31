@@ -1,18 +1,18 @@
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"] = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"] = async (args, env) => {
     const cmd = await interpretate(args[0], env);
-    core["Notebook`Editor`ExportNotebook`Internal`Sniffer"][cmd](args.slice(1), env);
+    core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"][cmd](args.slice(1), env);
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sampler"] = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"] = async (args, env) => {
     const cmd = await interpretate(args[0], env);
-    return core["Notebook`Editor`ExportNotebook`Internal`Sampler"][cmd](args.slice(1), env);
+    return core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"][cmd](args.slice(1), env);
 }
 
 let instance = {};
 
 let SamplerNode = false;
 
-core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Init = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"].Init = async (args, env) => {
     const channel = await interpretate(args[0], env);
     if (!SamplerNode) SamplerNode = (await import('../libs/sampler.js')).SamplerNode;
     instance.sampler = new SamplerNode(instance, channel);
@@ -30,32 +30,32 @@ core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Init = async (args, env)
     instance.sampler.start();
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Stop = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"].Stop = async (args, env) => {
     instance.sampler.stop();
     instance.restore();
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Dispose = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"].Dispose = async (args, env) => {
     instance.sampler.dispose();
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sampler"].Get = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sampler"].Get = async (args, env) => {
     const c = instance.sampler.pump();
     console.log(c);
     return c;
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Eject = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"].Eject = async (args, env) => {
     instance.restore();
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Purge = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"].Purge = async (args, env) => {
     delete instance.dump;
 }
 
 let AnalyzerNode = false;
 
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Get = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"].Get = async (args, env) => {
     const node = new AnalyzerNode(instance.dump);
     node.analyze();
     const groups = node.makeGroups();
@@ -63,7 +63,7 @@ core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Get = async (args, env) 
     return [encodeURIComponent(JSON.stringify(instance.dump)), groups];
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].GetRaw = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"].GetRaw = async (args, env) => {
     const node = new AnalyzerNode(instance.dump);
     node.analyze();
     const groups = node.makeGroups();
@@ -71,7 +71,7 @@ core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].GetRaw = async (args, en
     return encodeURIComponent(JSON.stringify({dump: instance.dump, groups: groups}));
 }
 
-core["Notebook`Editor`ExportNotebook`Internal`Sniffer"].Inject = async (args, env) => {
+core["CoffeeLiqueur`Extensions`ExportImport`Internal`Sniffer"].Inject = async (args, env) => {
     const channel = await interpretate(args[0], env);
 
     const reciver = server.kernel.emitt.bind(server.kernel);
