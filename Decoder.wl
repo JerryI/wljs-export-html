@@ -149,7 +149,7 @@ With[{
     str = Import[path, "Text"];
 
 
-    notebook = Notebook[];
+    notebook = nb`NotebookObj[];
     With[{n = notebook},
         n["Quick"] = True;
         n["HaveToSaveAs"] = True;
@@ -405,7 +405,7 @@ With[{
     nb = Import[path];
 
 
-    notebook = Notebook[];
+    notebook = nb`NotebookObj[];
     With[{n = notebook},
         n["Quick"] = True;
         n["HaveToSaveAs"] = True;    

@@ -5,9 +5,9 @@ IfKeyExists[assoc_Association, list_Association] := With[{},
     If[KeyExistsQ[assoc, #[[1]]], assoc[#[[1]]], #[[2]]] &/@ Keys[list]
 ];
 
-bundlable = Select[Keys[WLJS`PM`Packages], !MissingQ[WLJS`PM`Packages[#, "wljs-meta", "minjs"]]&];
+bundlable = Select[Keys[WLJSPackages`Packages], !MissingQ[WLJSPackages`Packages[#, "wljs-meta", "minjs"]]&];
 
-getDesc[tag_] := WLJS`PM`Packages[tag, "description"]
+getDesc[tag_] := WLJSPackages`Packages[tag, "description"]
 
 parseInt[any_String] := ToExpression[any]
 parseInt[any_] := any 

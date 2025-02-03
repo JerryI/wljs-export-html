@@ -5,7 +5,7 @@
         "build-css": "npx tailwindcss build Styles/Tailwind.css -o Styles/Optimized.css",
         "build": "node --max-old-space-size=8192 ./node_modules/.bin/rollup --config rollup.config.mjs"
     },
-    "description": "A plugin for exporting notebooks to HTML",
+    "description": "A plugin for exporting notebooks to HTML, Markdown, Mathematica and other formats",
     "wljs-meta": {
         "frontend": [
             "Frontend.wl"

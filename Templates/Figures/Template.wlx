@@ -12,7 +12,8 @@ FigureCode[OptionsPattern[]] := With[{
             <div class="wljs-container" id="{UId}"></div>
             <script type="module">
                 let symbols = '<Sym/>';
-                symbols = await interpretate(JSON.parse(interpretate.unzlib64String(symbols)), {hold:true});
+                const decodedDT = await interpretate.unzlib64String(symbols);
+                symbols = await interpretate(JSON.parse(decodedDT), {hold:true});
                 Object.keys(symbols).forEach(element => {
                     core[element] = async (args, env) => {
                         return await interpretate(core[element].data, env)
@@ -24,7 +25,8 @@ FigureCode[OptionsPattern[]] := With[{
                 core.Offload = (args, env) => interpretate(args[0], env)
 
                 let payload = '<JSON/>';
-                payload = JSON.parse(interpretate.unzlib64String(payload));
+                const decodedPayload = await interpretate.unzlib64String(payload);
+                payload = JSON.parse(decodedPayload);
 
                 const env = {element: document.getElementById('<UId/>'), global: {}};
                 const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
@@ -39,7 +41,8 @@ FigureCode[OptionsPattern[]] := With[{
             <div class="wljs-container" id="{UId}"></div>
             <script type="module">
                 let payload = '<JSON/>';
-                payload = JSON.parse(interpretate.unzlib64String(payload));
+                const decoded = await interpretate.unzlib64String(payload)
+                payload = JSON.parse(decoded);
     
                 const env = {element: document.getElementById('<UId/>'), global: {}};
                 const instance = new ExecutableObject('figure-'+uuidv4(), env, payload);
@@ -62,7 +65,8 @@ SymbolsCode[OptionsPattern[]] := With[{
         <div class="wljs-container" id="{UId}"></div>
         <script type="module">
             let payload = '<JSON/>';
-            payload = JSON.parse(interpretate.unzlib64String(payload));
+            const decoded = await interpretate.unzlib64String(payload);
+            payload = JSON.parse(decoded);
 
             //INDEV
             core[element] = async (args, env) => {
@@ -96,13 +100,11 @@ HeadCode[OptionsPattern[]] := With[{
 
   ]& /@ Flatten[Table[
       Table[
-          Echo[<|"key"->WLJS`PM`Packages[i, "key"], "path"->j, "original"->i|>];
-          <|"key"->WLJS`PM`Packages[i, "key"], "path"->j|>
-      , {j, {WLJS`PM`Packages[i, "wljs-meta", "js"]} // Flatten}]
-  , {i, Select[WLJS`PM`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJS`PM`Packages[#, "enabled"] && TrueQ[WLJS`PM`Packages[#, "wljs-meta", "figureExportRequired"]] && KeyExistsQ[WLJS`PM`Packages[#, "wljs-meta"], "minjs"])&]} ]] 
+          Echo[<|"key"->WLJSPackages`Packages[i, "key"], "path"->j, "original"->i|>];
+          <|"key"->WLJSPackages`Packages[i, "key"], "path"->j|>
+      , {j, {WLJSPackages`Packages[i, "wljs-meta", "js"]} // Flatten}]
+  , {i, Select[WLJSPackages`Packages // Keys, (!MemberQ[existsOrEmpty[settings, "ExportHTMLExclude"], #] && WLJSPackages`Packages[#, "enabled"] && TrueQ[WLJSPackages`Packages[#, "wljs-meta", "figureExportRequired"]] && KeyExistsQ[WLJSPackages`Packages[#, "wljs-meta"], "minjs"])&]} ]] 
     
-,
-    <script type="module" src="https://cdn.jsdelivr.net/gh/JerryI/wljs-export-html@main/dist/zip.min.js"></script>
 ,
     <style>
         .graphics2d-controller {

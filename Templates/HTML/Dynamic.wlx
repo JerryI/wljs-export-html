@@ -166,20 +166,21 @@ ExportCells[Rule["Notebook", notebook_], Rule["Settings", settings_]] := Module[
   ]
 ];
 
-KernelScripts[OptionsPattern[]] := With[{Payload = ExportString[OptionValue["Compressed"], "JSON"], ZIPModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "zip.js"}], "Text"], JSModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "decoder.js"}], "Text"]},
+KernelScripts[OptionsPattern[]] := With[{Payload = ExportString[OptionValue["Compressed"], "JSON"], JSModule = Import[FileNameJoin[{OptionValue["Root"], "dist", "decoder.js"}], "Text"]},
   {
     <script type="module">
       <JSModule/>
     </script>
-  ,    
-    <script type="module">
-      <ZIPModule/>
-    </script>
   ,
     <script type="module">
       let mesh = <Payload/>;
-      mesh = mesh.map((m) => interpretate.unzlib64String(m));
-      window._kernels = mesh.map(KernelMesh.unpack);
+      const output = [];
+      for (const m of mesh) {
+        const decoded = await interpretate.unzlib64String(m);
+        output.push(decoded);
+      }
+      
+      window._kernels = output.map(KernelMesh.unpack);
     </script>
   } // StringRiffle
 ]
