@@ -10,7 +10,7 @@ BeginPackage["CoffeeLiqueur`Extensions`ExportImport`Widgets`", {
 Begin["`Internal`"];
 
 Needs["CoffeeLiqueur`Notebook`Kernel`" -> "GenericKernel`"];
-Needs["CoffeeLiqueur`Notebook`LocalKernel`" -> "LocalKernel`"]
+Needs["CoffeeLiqueur`Notebook`LocalKernel`" -> "LocalKernel`"];
 
 Needs["CoffeeLiqueur`Notebook`Windows`" -> "win`"];
 
@@ -33,7 +33,6 @@ checkKernel[kernel_, cbk_] := (Echo["Checking kernel..."]; If[TrueQ[kernel["Cont
 
 execute[opts__][path_String, secondaryOpts___] := Module[{str, cells, objects, notebook, store, symbols, place},
 With[{
-    dir = AppExtensions`QuickNotesDir,
     name = FileBaseName[path],
     promise = Promise[],
     
@@ -41,10 +40,12 @@ With[{
 
     spinner = Notifications`Spinner["Topic"->"Initializing an App", "Body"->"Please, wait"](*`*),
     msg = OptionValue["Messager"],
-    generated = RandomWord[]<>"`"
+    generated = RandomWord[]<>StringTake[CreateUUID[], 3]<>"w`"
 }, 
 
     options = Join[Association[List[opts] ], Association[ List[secondaryOpts] ] ]; 
+
+    notebook["Path"] = path;
 
     EventFire[msg, spinner, True];
 
@@ -67,7 +68,8 @@ With[{
             Echo["Starting evaluation", "WLE Decoder"];
             With[{
                 initCells = Select[Select[notebook["Cells"], cell`InputCellQ], (#["Props"]["InitGroup"] === True) &],
-                last = FirstCase[notebook["Cells"] // Reverse, _?cell`InputCellQ]
+                last = FirstCase[notebook["Cells"] // Reverse, _?cell`InputCellQ],
+                dir = FileNameSplit[DirectoryName[ path ] ]
             },
                 EventFire[spinner["Promise"], Resolve, True];
 
@@ -75,8 +77,16 @@ With[{
                     CoffeeLiqueur`Extensions`RemoteCells`Private`spinners[generated] = CoffeeLiqueur`Extensions`Notifications`Notify["Evaluating cells in the generated context", "Topic"->"Notebook", "Type"->"Spinner"];
                     $ContextPath = $ContextPath /. "Global`" -> Nothing;
                     $Context = generated;
+                    Internal`Kernel`$savedDirectory = Directory[];
+                    SetDirectory[FileNameJoin @ dir];
                     $ContextPath = Append[$ContextPath, generated];
                 ];
+
+                (* FIXME!!! *)
+                (*(
+                    #["Data"] = StringReplace[#["Data"], {"NotebookDirectory[]" -> ToString[dir, InputForm] }];
+                    Print[#["Data"] ];
+                ) &/@ initCells;*)
 
                 cell`EvaluateCellObj[#] &/@ initCells;
 
@@ -91,6 +101,8 @@ With[{
 
                                     $ContextPath = Append[$ContextPath /. generated -> Nothing, "Global`"];
                                     $Context = "Global`";
+                                    SetDirectory[Internal`Kernel`$savedDirectory];
+                         
                                 ];                            
                             ]
                             }];
