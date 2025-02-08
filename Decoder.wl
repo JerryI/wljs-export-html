@@ -14,6 +14,8 @@ Needs["CoffeeLiqueur`Notebook`LocalKernel`" -> "LocalKernel`"]
 Needs["CoffeeLiqueur`Notebook`Cells`" -> "cell`"];
 Needs["CoffeeLiqueur`Notebook`" -> "nb`"];
 
+Needs["CoffeeLiqueur`Notebook`AppExtensions`" -> "AppExtensions`"];
+
 System`RowBoxFlatten; (* needed to fix Kernel and Master definitions *)
 
 {saveNotebook, loadNotebook, renameNotebook, cloneNotebook}         = ImportComponent["Frontend/Loader.wl"];
@@ -180,7 +182,10 @@ With[{
     root = DirectoryName[path];
 
     If[KeyExistsQ[query, "root"],
-      root = URLDecode[query["root"] ]
+      Echo["Decoder. Extend webserver PATH to "];
+      Echo[  URLDecode[query["root"] ] ];
+      EventFire[AppExtensions`AppEvents, "App:ExtendPath", URLDecode[query["root"] ] ];
+      root = URLDecode[query["root"] ];
     ];
 
     notebook = nb`NotebookObj[];
