@@ -6,7 +6,7 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
     Echo[client];
    
     
-    With[{p = decode[Path, "Messager"->Messager, "Client"->client]},
+    With[{p = decode[Path, "Messager"->Messager, "Query" -> OptionValue["Query"], "Client"->client]},
             Echo[p];
             Then[p, Function[result,
               Pause[1];
@@ -37,6 +37,6 @@ Component[OptionsPattern[]] := With[{EventChannel = CreateUUID[], decode = Optio
   ]
 ]
 
-Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "IframeQ"->False, "Controls" -> "", "Client"->Null};
+Options[Component] = {"Parameters"-><|"AccentColor" -> "teal"|>, "Query" -> <||>, "Event" -> Null, "Messager" -> Null, "Path" -> "", "IframeQ"->False, "Controls" -> "", "Client"->Null};
 
 Component

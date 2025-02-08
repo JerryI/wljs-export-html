@@ -226,7 +226,9 @@ GetTitle[Rule["Notebook", notebook_]] := With[{},
       If[Length[markdown] == 0,
         "WLJS Notebook",
 
-        StringCases[markdown[[1]]["Data"], RegularExpression[".md\n#+(.*)"] :> "$1"] // First
+        With[{ r = StringCases[markdown[[1]]["Data"], RegularExpression[".md\n#+(.*)"] :> "$1"] },
+          If[Length[r] == 0,  StringSplit[markdown[[1]]["Data"], "\n"][[2]], r[[1]] ]
+        ]
       ]
     ]
   ]

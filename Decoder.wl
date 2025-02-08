@@ -113,7 +113,15 @@ lang[any_String] := StringJoin[".", any, "\n"]
 codeBlock;
 codeBlock["mermaid", rest_] := codeBlockInPlace["mermaid", rest] 
 
-fixImages[s_String] := With[{},
+findFile[filename_, dir_] := With[{},
+
+With[{result = {FileNames["pgb.png", dir, 3], "Missing"} // Flatten // First},
+    With[{splitted = FileNameSplit[result]},
+      Drop[splitted, Min[FileNameSplit[dir] // Length, Length[splitted]-1] ]
+    ]
+] ]
+
+fixImages[s_String, root_] := With[{},
   StringReplace[s, {
     RegularExpression["!(\\[[\\w|\\d|-| |_]*\\])\\(([^\\(
 )\\[\\]]*)\\)"] :> With[{
@@ -121,25 +129,46 @@ fixImages[s_String] := With[{},
     url = "$2"
 },
       If[StringTake[url, 1] == "/",
-        StringTemplate["![``](``)"][label, url]
+        With[{
+            dest = findFile[Last[ URLParse[url]["Path"] ], root]
+          },
+            StringTemplate["![``](/``)"]["image", dest]
+        ]        
       ,
-        If[StringTake[url, Min[4, StringLength[url] ] ] == "http",
+        If[StringTake[url, Min[4, StringLength[url] ] ] === "http",
           StringTemplate["![``](``)"][label, url]
         ,
-          StringTemplate["![``](/``)"][label, url ]
+          With[{
+            dest = findFile[Last[ URLParse[url]["Path"] ], root]
+          },
+            StringTemplate["![``](/``)"]["image", dest]
+          ]
         ]
         
+      ]
+    ]
+
+  ,
+
+    RegularExpression["!\\[\\[([\\w|\\d|-| |\\.|\\||_]*)\\]\\]"] :> With[{
+      url = First[ StringSplit["$1", "|"] ]
+    },
+      With[{
+        dest = findFile[Last[ URLParse[url]["Path"] ], ]
+      },
+        StringTemplate["![``](``)"]["image", dest]
       ]
     ]
   
   }]
 ]
 
-decodeMD[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store},
+decodeMD[path_String, OptionsPattern[] ] := Module[{str, cells, objects, notebook, store, root},
 With[{
     dir = AppExtensions`QuickNotesDir,
     name = FileBaseName[path],
     promise = Promise[],
+    query = OptionValue["Query"],
     msg = OptionValue["Messager"],
     client = OptionValue["Client"],
     spinner = Notifications`Spinner["Topic"->"Converting to notebook", "Body"->"Please, wait"](*`*)
@@ -148,6 +177,11 @@ With[{
 
     str = Import[path, "Text"];
 
+    root = DirectoryName[path];
+
+    If[KeyExistsQ[query, "root"],
+      root = URLDecode[query["root"] ]
+    ];
 
     notebook = nb`NotebookObj[];
     With[{n = notebook},
@@ -201,13 +235,13 @@ With[{
 
             String,
               cell`CellObj[
-                "Data" -> StringJoin[".md\n", fixImages @ item], 
+                "Data" -> StringJoin[".md\n", fixImages[item, root] ], 
                 "Type" -> "Input", 
                 "Notebook" -> notebook, 
                 "Props" -> <|"Hidden" -> True|>
               ];
               cell`CellObj[
-                "Data" -> fixImages[item], 
+                "Data" -> fixImages[item, root], 
                 "Type" -> "Output", 
                 "Display" -> "markdown", 
                 "Notebook" -> notebook
