@@ -123,7 +123,7 @@ findFile[filename_, d_] := With[{},
 
   With[{result = {FileNames[filename, d, 3], "Missing"} // Flatten // First},
       With[{splitted = FileNameSplit[result]},
-        URLEncode[StringRiffle[Drop[splitted, Min[FileNameSplit[d] // Length, Length[splitted]-1] ], "/"] ]
+        StringRiffle[URLEncode /@ (Drop[splitted, Min[FileNameSplit[d] // Length, Length[splitted]-1] ]), "/"] 
       ]
   ] 
 ]
