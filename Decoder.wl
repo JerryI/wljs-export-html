@@ -115,24 +115,31 @@ lang[any_String] := StringJoin[".", any, "\n"]
 codeBlock;
 codeBlock["mermaid", rest_] := codeBlockInPlace["mermaid", rest] 
 
-findFile[filename_, dir_] := With[{},
+findFile[filename_, d_] := With[{},
+  Echo["Trying to find ..."];
+  Echo[filename];
+  Echo["at"];
+  Echo[d];  
 
-With[{result = {FileNames["pgb.png", dir, 3], "Missing"} // Flatten // First},
-    With[{splitted = FileNameSplit[result]},
-      Drop[splitted, Min[FileNameSplit[dir] // Length, Length[splitted]-1] ]
-    ]
-] ]
+  With[{result = {FileNames[filename, d, 3], "Missing"} // Flatten // First},
+      With[{splitted = FileNameSplit[result]},
+        URLEncode[StringRiffle[Drop[splitted, Min[FileNameSplit[d] // Length, Length[splitted]-1] ], "/"] ]
+      ]
+  ] 
+]
 
-fixImages[s_String, root_] := With[{},
+fixImages[s_String, r_] := With[{},
   StringReplace[s, {
-    RegularExpression["!(\\[[\\w|\\d|-| |_]*\\])\\(([^\\(
-)\\[\\]]*)\\)"] :> With[{
+    RegularExpression["!(\\[[\\w|\\d|\\-| |_]*\\])\\(([^\\[\\]]*)\\)"] :> With[{
     label = "$1",
     url = "$2"
 },
+      Echo["Fixing..."<>" $1"<>" with $2"];
+      Echo[r];
+
       If[StringTake[url, 1] == "/",
         With[{
-            dest = findFile[Last[ URLParse[url]["Path"] ], root]
+            dest = findFile[Last[ URLParse[url]["Path"] ], r]
           },
             StringTemplate["![``](/``)"]["image", dest]
         ]        
@@ -141,7 +148,7 @@ fixImages[s_String, root_] := With[{},
           StringTemplate["![``](``)"][label, url]
         ,
           With[{
-            dest = findFile[Last[ URLParse[url]["Path"] ], root]
+            dest = findFile[Last[ URLParse[url]["Path"] ], r]
           },
             StringTemplate["![``](/``)"]["image", dest]
           ]
@@ -152,13 +159,13 @@ fixImages[s_String, root_] := With[{},
 
   ,
 
-    RegularExpression["!\\[\\[([\\w|\\d|-| |\\.|\\||_]*)\\]\\]"] :> With[{
+    RegularExpression["!\\[\\[([\\w|\\d|\\-| |\\.|\\||_]*)\\]\\]"] :> With[{
       url = First[ StringSplit["$1", "|"] ]
     },
       With[{
-        dest = findFile[Last[ URLParse[url]["Path"] ], ]
+        dest = findFile[Last[ URLParse[url]["Path"] ],r ]
       },
-        StringTemplate["![``](``)"]["image", dest]
+        StringTemplate["![``](/``)"]["image", dest]
       ]
     ]
   
@@ -179,7 +186,12 @@ With[{
 
     str = Import[path, "Text"];
 
+    Echo["Query"];
+    Echo[query];
+
     root = DirectoryName[path];
+    Echo["Root: "];
+    Echo[root];
 
     If[KeyExistsQ[query, "root"],
       Echo["Decoder. Extend webserver PATH to "];
@@ -187,6 +199,9 @@ With[{
       EventFire[AppExtensions`AppEvents, "App:ExtendPath", URLDecode[query["root"] ] ];
       root = URLDecode[query["root"] ];
     ];
+
+    Echo["Root: "];
+    Echo[root];
 
     notebook = nb`NotebookObj[];
     With[{n = notebook},
@@ -272,7 +287,7 @@ With[{
    promise 
 ] ]
 
-Options[decodeMD] = {"Messager"->"", "Client"->Null}
+Options[decodeMD] = {"Messager"->"", "Client"->Null, "Query" -> <||>}
 
 (*                                             ***                                                 *)
 (*                                   Mathematica NB Converter                                      *)
