@@ -194,9 +194,8 @@ With[{
     Echo[root];
 
     If[KeyExistsQ[query, "root"],
-      Echo["Decoder. Extend webserver PATH to "];
+      Echo["Decoder. found root"];
       Echo[  URLDecode[query["root"] ] ];
-      EventFire[AppExtensions`AppEvents, "App:ExtendPath", URLDecode[query["root"] ] ];
       root = URLDecode[query["root"] ];
     ];
 
