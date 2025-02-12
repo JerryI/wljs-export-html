@@ -107,25 +107,8 @@ imageProcessor[i_String, notebook_] := Module[{img, path = StringSplit[i, "/"]},
 
 cellProcess[any_, _, _, _, _] := any
 
-cellProcess[data_, "Output", "markdown", notebook_, settings_] := Join[data, <|"Data" -> 
-  If[settings["ExportHTMLImages"] === False,
-    data["Data"]
-  ,
-    StringReplace[data["Data"], {
-        RegularExpression["!\\[[\\w| |\\d]*\\]\\(([^):]*)\\)"] :> With[{i = imageProcessor["$1", notebook]},
-          StringJoin["![](", StringReplace[i, "\n"->""], ")"]
-        ],
-      
-        RegularExpression["src=\"([^):\"=\\>\\<.]*).(png|svg|jpeg|jpg|ttf|gif|webm|bmp)\""] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
-          StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
-        ]      
-      }
-    ]
-  ]
-|>]
 
-
-cellProcess[data_, "Output", "slide" | "slides", notebook_, settings_] := With[{p = Join[data, <|"Data" -> 
+cellProcess[data_, "Output", "slide" | "slides" | "markdown" | "html" | "wlx", notebook_, settings_] := With[{p = Join[data, <|"Data" -> 
   If[settings["ExportHTMLImages"] === False,
     data["Data"]
   ,
@@ -135,7 +118,7 @@ cellProcess[data_, "Output", "slide" | "slides", notebook_, settings_] := With[{
         ],
 
         RegularExpression["src=\"\\s?([^):\"=\\>\\<]*).(png|svg|jpeg|jpg|ttf|gif|webm|bmp)\"\\s?"] :> With[{i = imageProcessor[StringJoin["$1", ".", "$2"], notebook]},
-          StringJoin["src=\"", StringReplace[i, "\n"->""], "\""]
+          StringJoin["src=\"", StringReplace[i, "\n"->""], "\" "]
         ]      
       }
     ]
